@@ -14,12 +14,15 @@
     <audio id="end-audio">
       <source src="/games/derivitive/other/end.mp3" type="audio/mpeg">
     </audio>
+    
     <div class="game-over-container">
       <div class="high-score" id="highScore"></div>
       <div class="final-score" id="finalScore"></div>
       <div class="game-over-text">Game Over</div>
-      <button onclick="location.href='derivitive.html'">Try again</button>
+      <button onclick="location.href='/games/derivitive/HTML/derivitive.html'">Try again</button>
+      <button onclick="location.href='/startscreen.html'">Back to Start Screen</button>
     </div>
+
     <script>
       const urlParams = new URLSearchParams(window.location.search);
       const score = urlParams.get('score') || 0;

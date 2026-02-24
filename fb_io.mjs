@@ -19,16 +19,16 @@ import {
     remove
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-const firebaseConfig = {
-    apiKey: "AIzaSyBruBIlVZt6aJi3BB6lDykS7AKRqIcG6Gk",
-    authDomain: "comp-2025-leon-lim.firebaseapp.com",
-    databaseURL: "https://comp-2025-leon-lim-default-rtdb.firebaseio.com",
-    projectId: "comp-2025-leon-lim",
-    storageBucket: "comp-2025-leon-lim.firebasestorage.app",
-    messagingSenderId: "368770648112",
-    appId: "1:368770648112:web:5a69f197398d5e09b405f5",
-    measurementId: "G-JKYM9KTRLQ"
-};
+  const firebaseConfig = {
+    apiKey: "AIzaSyAWFMXdbKAkUGCzsrge1XvQzWG_FPWBXbI",
+    authDomain: "comp-2026-leon-lim.firebaseapp.com",
+    databaseURL: "https://comp-2026-leon-lim-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "comp-2026-leon-lim",
+    storageBucket: "comp-2026-leon-lim.firebasestorage.app",
+    messagingSenderId: "1092074281505",
+    appId: "1:1092074281505:web:4dc7d8eaf21fb278eea160",
+    measurementId: "G-12JTLL44XH"
+  };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
