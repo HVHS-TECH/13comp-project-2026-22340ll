@@ -1,7 +1,7 @@
 /**************************************************************/
 // main.mjs
 // Main entry for index.html
-// Written by <Your Name Here>, Term 2 202?
+// Written by Leon Lim, Term 1-2 2026
 /**************************************************************/
 const COL_C = 'white';      // These two const are part of the coloured     
 const COL_B = '#CD7F32';    //  console.log for functions scheme

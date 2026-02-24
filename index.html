@@ -22,8 +22,9 @@
             <div id="auth-error" class="w3-panel w3-red" style="display:none; margin-top:16px;"></div>
         </div>
     </div>
-
+    
     <script type="module">
+        // importing scripts for firebase authentication and database interaction
         import { 
             fb_initialise, 
             fb_signInWithGoogle, 
@@ -82,7 +83,7 @@
                         document.getElementById('auth-error').style.display = 'block';
                     }
                 });
-                
+                //error message
             } catch (error) {
                 document.getElementById('auth-error').textContent = 
                     `Initialization error: ${error.message}`;
