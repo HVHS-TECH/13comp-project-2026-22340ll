@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <title>Game Selection</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body { background-color: #f5f5f5; }
+        .game-container { max-width: 800px; margin: 50px auto; padding: 20px; }
+        .game-btn { height: 100px; margin: 10px 0; }
+        .loading-spinner {
+            margin: 50px auto;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .admin-panel-btn {
+            margin-bottom: 16px;
+            background-color: #9c27b0 !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="authCheck" class="w3-panel w3-center">
+        <div class="loading-spinner"></div>
+        <p>Checking access...</p>
+    </div>
+
+    <div id="gameScreen" class="w3-card-4 game-container" style="display:none;">
+        <header class="w3-container w3-blue">
+            <h2>Welcome to Game Portal</h2>
+        </header>
+        <div class="w3-container w3-padding-16">
+            <p>Welcome back, <span id="userName"></span>!</p>
+            
+            <div id="adminPanelContainer" style="display:none;">
+                <button id="adminButton" class="w3-button admin-panel-btn w3-block">
+                    Admin Panel
+                </button>
+            </div>
+            
+            <div class="w3-row-padding" style="margin: 20px 0;">
+                <div class="w3-half">
+                    <button onclick="location.href='/games/derivitive/HTML/derivitivestart.html'" 
+                            class="w3-button w3-blue w3-block game-btn">
+                        C.0.P.Y. DERIVITIVE
+                    </button>
+                </div>
+                <div class="w3-half">
+                    <button onclick="location.href='/games/game2/HTML/game2.html'" 
+                            class="w3-button w3-green w3-block game-btn">
+                        ILLEGAL POKER
+                    </button>
+                </div>
+            </div>
+            
+            <button id="signOutBtn" class="w3-button w3-red w3-block">Sign Out</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK - Use only v9 modular or compat version, not mixed -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    
+    <script>
+        // Replace with your actual Firebase config
+        // Replace with your actual Firebase config
+    const firebaseConfig = {
+    apiKey: "AIzaSyBruBIlVZt6aJi3BB6lDykS7AKRqIcG6Gk",
+    authDomain: "comp-2025-leon-lim.firebaseapp.com",
+    databaseURL: "https://comp-2025-leon-lim-default-rtdb.firebaseio.com",
+    projectId: "comp-2025-leon-lim",
+    storageBucket: "comp-2025-leon-lim.firebasestorage.app",
+    messagingSenderId: "368770648112",
+    appId: "1:368770648112:web:5a69f197398d5e09b405f5",
+    measurementId: "G-JKYM9KTRLQ"
+};
+
+// Initialize Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const database = firebase.database();
+
+/**
+ * Enhanced admin check with error handling and UID verification
+ */
+async function checkAdminStatus(user) {
+    try {
+        if (!user || !user.uid) {
+            console.error('No user or UID provided');
+            return false;
+        }
+
+        // Verify the exact UID from your screenshot
+        const adminUID = 'ae7WXXIleS9cEpjw8BixZ8bpEndz2';
+        if (user.uid === adminUID) {
+            console.log('Hardcoded admin UID match');
+            return true;
+        }
+
+        // Fallback to database check
+        console.log('Checking admin status for UID:', user.uid);
+        const snapshot = await database.ref('uidAdmin/' + user.uid).once('value');
+        const isAdmin = snapshot.exists();
+        
+        console.log('Admin check result:', isAdmin);
+        return isAdmin;
+    } catch (error) {
+        console.error("Admin check error:", error);
+        // Fallback to checking admin status in user data
+        const userSnapshot = await database.ref('users/' + user.uid).once('value');
+        return userSnapshot.exists() && userSnapshot.val().admin === true;
+    }
+}
+
+async function checkRegistration(user) {
+    try {
+        const snapshot = await database.ref('users/' + user.uid).once('value');
+        const userData = snapshot.val();
+        
+        if (userData) {
+            localStorage.setItem('userRegistration', JSON.stringify(userData));
+            
+            // Check admin status with multiple fallbacks
+            const isAdmin = await checkAdminStatus(user);
+            sessionStorage.setItem('isAdmin', isAdmin ? 'y' : 'n');
+            
+            return userData;
+        }
+        return null;
+    } catch (error) {
+        console.error("Registration check error:", error);
+        return null;
+    }
+}
+
+function setupAdminFeatures(isAdmin) {
+    const adminPanel = document.getElementById('adminPanelContainer');
+    if (isAdmin === 'y') {
+        console.log('Showing admin panel for user');
+        adminPanel.style.display = 'block';
+        document.getElementById('adminButton').onclick = () => {
+            window.location.href = '/manager/admin.html';
+        };
+    } else {
+        console.log('Hiding admin panel for regular user');
+        adminPanel.style.display = 'none';
+    }
+}
+
+// Main auth handler
+auth.onAuthStateChanged(async (user) => {
+    const authCheck = document.getElementById('authCheck');
+    const gameScreen = document.getElementById('gameScreen');
+    
+    try {
+        if (user) {
+            console.log('User signed in with UID:', user.uid);
+            const regData = await checkRegistration(user);
+            
+            if (regData) {
+                authCheck.style.display = 'none';
+                gameScreen.style.display = 'block';
+                document.getElementById('userName').textContent = regData.gameName || 'Player';
+                
+                const isAdmin = sessionStorage.getItem('isAdmin') === 'y';
+                setupAdminFeatures(isAdmin ? 'y' : 'n');
+            } else {
+                window.location.href = 'register.html';
+            }
+        } else {
+            window.location.href = 'index.html';
+        }
+    } catch (error) {
+        console.error("Auth state error:", error);
+        authCheck.innerHTML = `
+            <div class="w3-panel w3-red">
+                <h3>Connection Error</h3>
+                <p>Couldn't verify access. Trying again...</p>
+            </div>
+        `;
+        setTimeout(() => window.location.reload(), 3000);
+    }
+});
+
+// Sign out
+document.getElementById('signOutBtn').addEventListener('click', async () => {
+    try {
+        await auth.signOut();
+        localStorage.removeItem('userRegistration');
+        sessionStorage.removeItem('isAdmin');
+        window.location.href = 'index.html';
+    } catch (error) {
+        console.error('Sign out error:', error);
+        alert('Sign out failed. Please try again.');
+    }
+});
+    </script>
+</body>
+</html>

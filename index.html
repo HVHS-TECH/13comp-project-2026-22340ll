@@ -1,1 +1,96 @@
-Hello world!
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game Authentication</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body { background-color: #f5f5f5; }
+        .auth-container { max-width: 400px; margin: 100px auto; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div class="w3-card-4 auth-container">
+        <header class="w3-container w3-blue">
+            <h2>Game Portal Sign In</h2>
+        </header>
+        <div class="w3-container w3-padding-16">
+            <button id="signInButton" class="w3-button w3-blue w3-block w3-large">
+                Sign in with Google
+            </button>
+            <div id="auth-error" class="w3-panel w3-red" style="display:none; margin-top:16px;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { 
+            fb_initialise, 
+            fb_signInWithGoogle, 
+            fb_onAuthStateChanged, 
+            fb_checkUserExists,
+            fb_checkAdminStatus
+        } from './fb_io.mjs';
+        
+        async function initAuth() {
+            try {
+                await fb_initialise();
+                
+                // Check if user is already signed in
+                fb_onAuthStateChanged(async (user) => {
+                    if (user) {
+                        try {
+                            const userExists = await fb_checkUserExists(user.uid);
+                            if (userExists) {
+                                // Check admin status and store in session
+                                const isAdmin = await fb_checkAdminStatus(user.uid);
+                                sessionStorage.setItem('isAdmin', isAdmin ? 'y' : 'n');
+                                sessionStorage.setItem('userEmail', user.email);
+                                
+                                window.location.href = 'startscreen.html';
+                            } else {
+                                window.location.href = 'register.html';
+                            }
+                        } catch (error) {
+                            console.error("Error checking user data:", error);
+                            document.getElementById('auth-error').textContent = 
+                                `Authentication error: ${error.message}`;
+                            document.getElementById('auth-error').style.display = 'block';
+                        }
+                    }
+                });
+                
+                document.getElementById('signInButton').addEventListener('click', async () => {
+                    try {
+                        const user = await fb_signInWithGoogle();
+                        if (user) {
+                            const userExists = await fb_checkUserExists(user.uid);
+                            if (userExists) {
+                                // Check admin status and store in session
+                                const isAdmin = await fb_checkAdminStatus(user.uid);
+                                sessionStorage.setItem('isAdmin', isAdmin ? 'y' : 'n');
+                                sessionStorage.setItem('userEmail', user.email);
+                                
+                                window.location.href = 'startscreen.html';
+                            } else {
+                                window.location.href = 'register.html';
+                            }
+                        }
+                    } catch (error) {
+                        document.getElementById('auth-error').textContent = 
+                            `Sign-in failed: ${error.message}`;
+                        document.getElementById('auth-error').style.display = 'block';
+                    }
+                });
+                
+            } catch (error) {
+                document.getElementById('auth-error').textContent = 
+                    `Initialization error: ${error.message}`;
+                document.getElementById('auth-error').style.display = 'block';
+            }
+        }
+        
+        initAuth();
+    </script>
+</body>
+</html>

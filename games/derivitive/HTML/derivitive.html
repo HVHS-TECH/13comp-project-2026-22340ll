@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>C.0.P.Y Derivitive</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- p5 -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/p5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/addons/p5.sound.min.js"></script>
+
+  <!-- physics + p5play -->
+  <script src="https://cdn.jsdelivr.net/npm/planck-js@0.3.31/dist/planck.min.js"></script>
+  <script src="https://p5play.org/v3/p5play.js"></script>
+
+  <!-- YOUR GAME FILE -->
+  <script src="../MJS/derivitive.js"></script>
+
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+  <div id="audio-prompt" style="position:fixed;inset:0;display:flex;justify-content:center;align-items:center;background:rgba(0,0,0,0.85);z-index:1000;flex-direction:column;gap:20px;color:#fff;">
+    <h2>Click to enable audio and start</h2>
+    <button id="unlock-audio" style="padding:12px 20px;font-size:16px;border-radius:6px;border:none;background:#4CAF50;color:#fff;cursor:pointer;">
+      Enable Audio & Start
+    </button>
+  </div>
+
+  <script>
+    document.getElementById('unlock-audio').addEventListener('click', async () => {
+      await userStartAudio();
+      document.getElementById('audio-prompt').style.display = 'none';
+    });
+  </script>
+</body>
+</html>

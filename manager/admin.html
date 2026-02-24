@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>ADMIN</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/x-icon" href="/index/dtec_favicon.PNG">
+  
+  <!-- stylesheets -->
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <link rel="stylesheet" href="/css/ad_manager.css">
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  
+  <!-- Your JS files -->
+  <script type="module" src="/manager/ad_manager.mjs"></script>
+</head>
+
+<body class="w3-grey">
+  <!-- ADMIN PAGE -->
+  <header class="header-container">
+    <img id='img_photoURL' src='/index/dtec_favicon.PNG' alt="admin icon">
+    <h1 class="header-title">
+        hi <span id='h_gameName'></span>, you are ADMIN
+    </h1>
+    <button id="b_back" class="w3-button w3-border w3-text-white" 
+            onclick="history.back()">BACK</button>
+  </header>
+
+  <main class="w3-container">      
+    <nav id="n_admin" class="w3-bar stickyNav">
+      <button id="b_ad_user" data-track="b_ad_user" class="w3-button w3-block w3-col m2 w3-medium w3-ripple w3-small w3-border">Users</button>
+      <button id="b_ad_GD" data-track="b_ad_GD" class="w3-button w3-block w3-col m2 w3-medium w3-ripple w3-small w3-border">Game 1</button>
+      <button id="b_ad_SI" data-track="b_ad_SI" class="w3-button w3-block w3-col m2 w3-medium w3-ripple w3-small w3-border">Game 2</button>
+    </nav>
+    
+    <div>
+      <div id="d_admin" class="w3-table-all w3-small w3-light-grey w3-hoverable w3-border w3-bordered content">
+        <table id="t_userData"></table>
+      </div>
+    </div>
+  </main>
+
+  <!-- FIREBASE STATUS -->
+  <footer id="s_fbStatus" class="w3-grey">
+    <div class="w3-padding w3-lightGrey">
+      <p>Status: <span id="p_status">Loading...</span></p>
+    </div>
+  </footer>
+</body>
+</html>

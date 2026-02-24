@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game Registration</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body { background-color: #f5f5f5; }
+        .reg-container { max-width: 500px; margin: 50px auto; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div id="authCheck" class="w3-panel w3-center">
+        <p>Checking authentication status...</p>
+    </div>
+
+    <div id="regForm" class="w3-card-4 reg-container" style="display:none;">
+        <header class="w3-container w3-blue">
+            <h2>Complete Your Registration</h2>
+        </header>
+        <div class="w3-container w3-padding-16">
+            <form id="registrationForm">
+                <div class="w3-section">
+                    <label>Username</label>
+                    <input class="w3-input w3-border" type="text" id="gameName" required>
+                </div>
+                <p2>Don't add your real name. Or do. I don't really care.</p2>
+                <p3> -Eyellusion</p3>
+                <div class="w3-section">
+                    <label>Age</label>
+                    <input class="w3-input w3-border" type="number" id="age" min="5" max="100" required>
+                </div>
+                <button type="submit" class="w3-button w3-blue w3-block">Register</button>
+            </form>
+            <div id="reg-error" class="w3-panel w3-red" style="display:none; margin-top:16px;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { 
+            fb_initialise,
+            fb_onAuthStateChanged,
+            fb_writeUserData,
+            fb_checkUserExists,
+            fb_setAdminStatus,
+            auth
+        } from './fb_io.mjs';
+        
+        // Initialize and check auth status
+        fb_initialise().then(() => {
+            fb_onAuthStateChanged(async (user) => {
+                if (user) {
+                    try {
+                        const userExists = await fb_checkUserExists(user.uid);
+                        if (userExists) {
+                            window.location.href = 'startscreen.html';
+                        } else {
+                            document.getElementById('authCheck').style.display = 'none';
+                            document.getElementById('regForm').style.display = 'block';
+                        }
+                    } catch (error) {
+                        console.error("Error checking user registration:", error);
+                    }
+                } else {
+                    window.location.href = 'index.html';
+                }
+            });
+        });
+        
+        // Handle form submission
+        document.getElementById('registrationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const gameName = document.getElementById('gameName').value.trim();
+            const age = document.getElementById('age').value;
+            const errorElement = document.getElementById('reg-error');
+            
+            if (!gameName || !age) {
+                errorElement.textContent = 'Please fill in all fields';
+                errorElement.style.display = 'block';
+                return;
+            }
+            
+            try {
+                const user = auth.currentUser;
+                if (!user) throw new Error('Not authenticated');
+                
+                // Check if this is the first user (potential admin)
+                const isFirstUser = await checkIfFirstUser();
+                const isAdmin = isFirstUser;
+                
+                const regData = {
+                    gameName,
+                    age: parseInt(age),
+                    email: user.email,
+                    registeredAt: new Date().toISOString(),
+                    admin: isAdmin ? 'y' : 'n'
+                };
+                
+                // Write user data
+                await fb_writeUserData(user.uid, user.displayName || gameName, user.email, regData);
+                
+                // Set admin status if this is the first user
+                if (isAdmin) {
+                    await fb_setAdminStatus(user.uid, true);
+                }
+                
+                // Store in session and local storage
+                sessionStorage.setItem('isAdmin', isAdmin ? 'y' : 'n');
+                sessionStorage.setItem('userEmail', user.email);
+                localStorage.setItem('userRegistration', JSON.stringify(regData));
+                
+                window.location.href = 'startscreen.html';
+                
+            } catch (error) {
+                errorElement.textContent = `Registration failed: ${error.message}`;
+                errorElement.style.display = 'block';
+                console.error('Registration error:', error);
+            }
+        });
+        
+        async function checkIfFirstUser() {
+            // In a real app, you would implement proper logic to check if this is the first user
+            // For demo purposes, we'll check if the email matches a predefined admin email
+            const user = auth.currentUser;
+            const adminEmails = ["admin@example.com"]; // Add your admin emails here
+            
+            return adminEmails.includes(user.email);
+        }
+    </script>
+</body>
+</html>
