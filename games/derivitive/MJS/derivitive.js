@@ -89,7 +89,7 @@ function handleControls() {
         deritive.image = imgPlane;
     }
 
-    if (kb.pressing('w')) deritive.vel.y = -5;
+    if (kb.pressing('w')) deritive.vel.y = -5; 
     if (kb.pressing('s')) deritive.vel.y = 5;
 
     if (kb.pressing('space') && !boolet) {
