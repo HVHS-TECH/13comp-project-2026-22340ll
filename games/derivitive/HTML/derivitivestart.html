@@ -27,6 +27,31 @@
       <img src="/games/derivitive/other/spacebutton.png" width="115" height="100" alt="Space Button">
       <button class="fight-button" onclick="location.href='/games/derivitive/HTML/derivitive.html'">FIGHT!</button>
       <img src="/games/derivitive/other/arror.png" width="100" height="100" alt="Arrow">
-    
+    </div>
+  </header>
+  <script>
+  document.getElementById('signInButton').addEventListener('click', async () => {
+    try {
+      const user = await fb_signInWithGoogle();
+        if (user) {
+        const userExists = await fb_checkUserExists(user.uid);
+        if (userExists) {
+        // Check admin status and store in session
+        const isAdmin = await fb_checkAdminStatus(user.uid);
+        sessionStorage.setItem('isAdmin', isAdmin ? 'y' : 'n');
+        sessionStorage.setItem('userEmail', user.email);
+                                
+        window.location.href = 'startscreen.html';
+        } else {
+        window.location.href = 'register.html';
+      }
+  }
+    } catch (error) {
+       document.getElementById('auth-error').textContent = 
+      `Sign-in failed: ${error.message}`;
+      document.getElementById('auth-error').style.display = 'block';
+                    }
+                });
+  </script>
 </body>
 </html>

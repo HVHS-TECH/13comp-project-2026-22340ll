@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/games/BlandbournBout/css/restultstreen.css">
 </head>
 
-<body style="background-color:rgb(82, 8, 66);">
+<body style="background-color:rgb(41, 210, 216);">
   
   <header>
     <div class="game-over-container">
@@ -21,7 +21,7 @@
 
     <script>
       const urlParams = new URLSearchParams(window.location.search);
-      const score = urlParams.get('score') || 0;
+      const score = urlParams.get('score') || 0;  //PLACEHOLDER DO NOT INTERACT YET
       document.getElementById('finalScore').textContent = `Score: ${score}`;
       let highScore = localStorage.getItem('highScore') || 0;
       if (parseInt(score) > parseInt(highScore)) {

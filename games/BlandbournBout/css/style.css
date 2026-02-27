@@ -27,7 +27,7 @@ body {
     cursor: pointer;
     border: none;
     border-radius: 5px;
-    background-color: #007bff;
+    background-color: #bdddff;
     color: #fff;
     transition: background-color 0.3s;
     width: 220px; /* Set a fixed width */
