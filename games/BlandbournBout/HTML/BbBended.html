@@ -1,6 +1,40 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Blandbourn Bout Results</title>
-  <p1>There is nothing. get out.</p1>
+  <title>Results!</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/x-icon" href="/assets/images/dtec_favicon.PNG">
+  <link rel="stylesheet" href="/games/BlandbournBout/css/restultstreen.css">
 </head>
+
+<body style="background-color:rgb(82, 8, 66);">
+  
+  <header>
+    <div class="game-over-container">
+      <div class="high-score" id="highScore"></div>
+      <div class="final-score" id="finalScore"></div>
+      <div class="game-over-text">Game Over</div>
+      <button onclick="location.href='/games/BlandbournBout/HTML/BbBlobby.html'">Back to Lobby</button>
+      <button onclick="location.href='/startscreen.html'">Back to Start Screen</button>
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const score = urlParams.get('score') || 0;
+      document.getElementById('finalScore').textContent = `Score: ${score}`;
+      let highScore = localStorage.getItem('highScore') || 0;
+      if (parseInt(score) > parseInt(highScore)) {
+        highScore = score;
+        localStorage.setItem('highScore', highScore);
+        document.getElementById('highScore').textContent = `New High Score: ${highScore}`;
+      } else {
+        document.getElementById('highScore').textContent = `High Score: ${highScore}`;
+      }
+      document.addEventListener('click', function() {
+        document.getElementById('end-audio').play();
+      }, { once: true });
+    </script>
+  </header>
+</body>
+</html>
