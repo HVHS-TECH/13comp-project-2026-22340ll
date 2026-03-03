@@ -26,12 +26,12 @@ function setup() {
 fb_initialize();
 /*******************************************************/
 function preload() { //Preload everyting for further purposes.
-    imgPlaceholder = loadImage('../other/image.jpg'); //placeholder
-    imgSpartan = loadImage('../other/Kratos_PS4.png'); // all rights go to sony and playstation
-    imgWizard = loadImage('../other/');
-    imgPalidin = loadImage('../other/');
-    imgBardarian = loadImage('../other/');
-    imgCleric = loadImage('../other/');
+    imgPlaceholder = loadImage('../other/image.jpg'); 
+    imgSpartan = loadImage('../other/Kratos_PS4.png'); // all property of Kratos go to sony and playstation
+    imgWizard = loadImage('../other/-');
+    imgPalidin = loadImage('../other/-');
+    imgBardarian = loadImage('../other/-');
+    imgCleric = loadImage('../other/-');
     imgBG1 = loadImage('../other/');
     imgBG2 = loadImage('../other/');
 
