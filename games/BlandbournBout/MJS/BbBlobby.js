@@ -20,7 +20,7 @@ function setup() {
 function preload() { //Preload everyting for further purposes.
     imgPlaceholder = loadImage('../other/image.jpg'); //placeholder
     imgSpartan = loadImage('../other/Kratos_PS4.png'); // all property of Kratos go to sony and playstation
-    imgWizard = loadImage('../other/-'); // unit - doesn't actually exist. just put still until i make sprites.
+    imgWizard = loadImage('../other/-'); // unit "-" doesn't actually exist. just put still until i make sprites.
     imgPalidin = loadImage('../other/-');
     imgBardarian = loadImage('../other/-');
     imgCleric = loadImage('../other/-');
