@@ -1,3 +1,16 @@
+/*************************************************************
+  -BbBlobby.js 
+  -Blandbourn Bout lobby
+  -Waiting room for players to join before starting the game.
+  -
+
+/*************************************************************/
+
+let userID; // Making these exist
+let uidClass;
+let gameID;
+let gameNumber;
+
 import { fb_initialize, fb_authChanged } 
   from '../../../fb_io.mjs'; // import
 

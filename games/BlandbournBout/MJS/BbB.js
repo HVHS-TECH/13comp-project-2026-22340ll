@@ -1,3 +1,10 @@
+/*************************************************************
+-BbB.js
+-OKAY THIS IS THE ACTUAL GAME
+-Everygame is a sepprate firebase database
+
+/*************************************************************/
+
 import {  fb_initialize, fb_authChanged }
 from "../../../fb_io.mjs"; //Import
 
@@ -10,8 +17,7 @@ function setup() {
 
     // Initialize Firebase  
     fb_initialize();
-    // Listen for auth state changes
-    fb_authChanged(user => {
+        fb_authChanged(user => {
         if (user) {
             console.log('User signed in:', user);
             // theres a user
@@ -25,15 +31,14 @@ function setup() {
 
 fb_initialize();
 /*******************************************************/
-function preload() { //Preload everyting for further purposes.
-    imgPlaceholder = loadImage('../other/image.jpg'); 
+function preload() { //Preload everyting for further purposes. This should only load once.
     imgSpartan = loadImage('../other/Kratos_PS4.png'); // all property of Kratos go to sony and playstation
-    imgWizard = loadImage('../other/-');
-    imgPalidin = loadImage('../other/-');
-    imgBardarian = loadImage('../other/-');
-    imgCleric = loadImage('../other/-');
-    imgBG1 = loadImage('../other/');
-    imgBG2 = loadImage('../other/');
+    imgWizard = loadImage('../other/image.jpg'); // image.jpg is a placeholder
+    imgPalidin = loadImage('../other/image.jpg');
+    imgBardarian = loadImage('../other/image.jpg');
+    imgCleric = loadImage('../other/image.jpg');
+    imgBG1 = loadImage('../other/image.jpg');
+    imgBG2 = loadImage('../other/image.jpg');
 
 }
 

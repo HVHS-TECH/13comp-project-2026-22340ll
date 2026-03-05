@@ -1,3 +1,11 @@
+/*************************************************************
+-BbBwaiting.js
+-Loading screen until somebody joins
+-
+/*************************************************************/
+
+
+
 import { fb_initialize, fb_authChanged } 
   from '../../../fb_io.mjs'; // import
 

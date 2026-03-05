@@ -237,7 +237,7 @@ async function fb_setAdminStatus(userId, isAdmin) {
  * @param {number} score - Player's score
  * @returns {Promise<boolean>} True if successful
  */
-async function fb_writeGameScore(gameName, score) {
+async function fb_writeGameScore(gameName, score) {//Gamescores stored
     try {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated");
@@ -250,7 +250,7 @@ async function fb_writeGameScore(gameName, score) {
             email: user.email
         };
         
-        await set(ref(database, `gameScores/${gameName}/${user.uid}`), scoreData);
+        await set(ref(database, `gameScores/${gameName}/${user.uid}`), scoreData); 
         return true;
     } catch (error) {
         console.error("Failed to save score:", error);
@@ -291,7 +291,6 @@ async function fb_getHighScores(gameName, limit = 10) {
 }
 
 // Audio Control Functions
-
 /**
  * Resumes (or creates) the AudioContext after a user gesture.
  * Creates the AudioContext lazily so browsers won't block it on page load.
@@ -398,7 +397,7 @@ async function fb_deleteScore(game, uid) {
 }
 
 
-export {
+export { 
     fb_initialise,
     fb_signInWithGoogle,
     fb_onAuthStateChanged,
