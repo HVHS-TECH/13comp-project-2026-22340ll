@@ -39,5 +39,5 @@ function preload() { //Preload everyting for further purposes.
     imgCleric = loadImage('../other/image.jpg');
 }
 /*************************************************************/
-
+//start of code
 /*************************************************************/
