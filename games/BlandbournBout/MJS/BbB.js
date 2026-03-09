@@ -26,6 +26,8 @@ function setup() {
             // theres no user
         }
     });
+    BbB_checkGames()
+    BbB_checkScores();
   
 }
 

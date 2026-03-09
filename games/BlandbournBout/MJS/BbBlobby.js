@@ -5,6 +5,7 @@
   -
 
 /*************************************************************/
+console.log("Authenticate");  
 // -Setup
 let userID; // Making these exist
 let uidClass;
@@ -27,6 +28,8 @@ function setup() {
             // theres no user
         }
     });
+    BbB_checkGames()
+    BbB_checkScores();
   
 }
 
@@ -41,3 +44,7 @@ function preload() { //Preload everyting for further purposes.
 /*************************************************************/
 //start of code
 /*************************************************************/
+function BbB_checkGames(){
+    console.log("still waiting")
+    
+}
