@@ -5,12 +5,17 @@
   -
 
 /*************************************************************/
-console.log("Authenticate");  
 // -Setup
-let userID; // Making these exist
-let uidClass;
-let gameID;
-let gameNumber;
+let userID, uidClass, gameID, gameNumber; // Making these exist
+//let player1, player2, gameTurn; //So far, these dont do anything and will break 
+// smthn if i remove the slash now
+let playerClass = '';
+let oppClass = '';
+let playerReady = false;
+let oppReady = false;
+
+console.log("Authenticate");  
+
 
 import { fb_initialize, fb_authChanged } 
   from '../../../fb_io.mjs'; // import
