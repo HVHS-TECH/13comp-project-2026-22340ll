@@ -1,14 +1,14 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-analytics.js";
-import { 
-    getAuth, 
-    GoogleAuthProvider, 
+import {
+    getAuth,
+    GoogleAuthProvider,
     signInWithPopup,
     onAuthStateChanged,
     signOut
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 
-import { 
+import {
     getDatabase,
     ref,
     set,
@@ -19,7 +19,7 @@ import {
     remove
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
-  const firebaseConfig = {
+const firebaseConfig = {
     apiKey: "AIzaSyAWFMXdbKAkUGCzsrge1XvQzWG_FPWBXbI",
     authDomain: "comp-2026-leon-lim.firebaseapp.com",
     databaseURL: "https://comp-2026-leon-lim-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -28,7 +28,7 @@ import {
     messagingSenderId: "1092074281505",
     appId: "1:1092074281505:web:4dc7d8eaf21fb278eea160",
     measurementId: "G-12JTLL44XH"
-  };
+};
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -165,7 +165,7 @@ async function fb_checkUserExists(userId) {
 async function fb_checkAdminStatus(userId) {
     try {
         if (!userId) return false;
-        
+
         const snapshot = await get(ref(database, 'uidAdmin/' + userId));
         return snapshot.exists();
     } catch (error) {
@@ -184,11 +184,11 @@ function fb_authChanged() {
             if (user) {
                 console.log('User signed in:', user.uid);
                 sessionStorage.setItem('userEmail', user.email || '');
-                
+
                 try {
                     const isAdmin = await fb_checkAdminStatus(user.uid);
                     sessionStorage.setItem('isAdmin', isAdmin ? 'y' : 'n');
-                    
+
                     if (isAdmin) {
                         console.log('Admin user detected');
                     }
@@ -241,7 +241,7 @@ async function fb_writeGameScore(gameName, score) {//Gamescores stored
     try {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated");
-        
+
         const scoreData = {
             score: parseInt(score),
             timestamp: new Date().toISOString(),
@@ -249,8 +249,8 @@ async function fb_writeGameScore(gameName, score) {//Gamescores stored
             uid: user.uid,
             email: user.email
         };
-        
-        await set(ref(database, `gameScores/${gameName}/${user.uid}`), scoreData); 
+
+        await set(ref(database, `gameScores/${gameName}/${user.uid}`), scoreData);
         return true;
     } catch (error) {
         console.error("Failed to save score:", error);
@@ -268,13 +268,13 @@ async function fb_getHighScores(gameName, limit = 10) {
     try {
         const scoresRef = ref(database, `gameScores/${gameName}`);
         const snapshot = await get(query(
-            scoresRef, 
-            orderByChild('score'), 
+            scoresRef,
+            orderByChild('score'),
             limitToLast(limit)
         ));
-        
+
         if (!snapshot.exists()) return [];
-        
+
         const scores = [];
         snapshot.forEach((childSnapshot) => {
             scores.push({
@@ -282,7 +282,7 @@ async function fb_getHighScores(gameName, limit = 10) {
                 ...childSnapshot.val()
             });
         });
-        
+
         return scores.sort((a, b) => b.score - a.score);
     } catch (error) {
         console.error("Failed to get scores:", error);
@@ -324,7 +324,7 @@ async function fb_getAllUsers() {
     try {
         const snapshot = await get(ref(database, 'users'));
         if (!snapshot.exists()) return [];
-        
+
         const users = [];
         snapshot.forEach((childSnapshot) => {
             users.push({
@@ -347,7 +347,7 @@ async function fb_getAllGameScores() {
     try {
         const snapshot = await get(ref(database, 'gameScores'));
         if (!snapshot.exists()) return [];
-        
+
         const scores = [];
         snapshot.forEach((gameSnapshot) => {
             gameSnapshot.forEach((userSnapshot) => {
@@ -397,7 +397,7 @@ async function fb_deleteScore(game, uid) {
 }
 
 
-export { 
+export {
     fb_initialise,
     fb_signInWithGoogle,
     fb_onAuthStateChanged,

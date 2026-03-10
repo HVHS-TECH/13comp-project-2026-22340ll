@@ -14,11 +14,11 @@ let oppClass = '';
 let playerReady = false;
 let oppReady = false;
 
-console.log("Authenticate");  
+console.log("Authenticate");
 
 
-import { fb_initialize, fb_authChanged } 
-  from '../../../fb_io.mjs'; // import
+import { fb_initialize, fb_authChanged }
+    from '../../../fb_io.mjs'; // import
 
 function setup() {
     // Initialize Firebase  
@@ -35,7 +35,7 @@ function setup() {
     });
     BbB_checkGames()
     BbB_checkScores();
-  
+
 }
 
 function preload() { //Preload everyting for further purposes.
@@ -49,7 +49,7 @@ function preload() { //Preload everyting for further purposes.
 /*************************************************************/
 //start of code
 /*************************************************************/
-function BbB_checkGames(){
+function BbB_checkGames() {
     console.log("still waiting")
-    
+
 }

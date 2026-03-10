@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Results!</title> //Results screen. Shows the user, total damage dealt, wins, and turns.
   <meta charset="UTF-8">
@@ -9,7 +10,7 @@
 </head>
 
 <body style="background-color:rgb(41, 210, 216);">
-  
+
   <header>
     <div class="game-over-container">
       <div class="high-score" id="highScore"></div>
@@ -31,10 +32,11 @@
       } else {
         document.getElementById('highScore').textContent = `High Score: ${highScore}`;
       }
-      document.addEventListener('click', function() {
+      document.addEventListener('click', function () {
         document.getElementById('end-audio').play();
       }, { once: true });
     </script>
   </header>
 </body>
+
 </html>

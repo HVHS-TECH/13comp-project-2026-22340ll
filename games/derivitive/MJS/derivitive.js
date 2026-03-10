@@ -34,7 +34,7 @@ function setup() {
     setupHealthDisplay();
     funcImg();
 
-    deritive = new Sprite(width/2, height-100, 150, 95);
+    deritive = new Sprite(width / 2, height - 100, 150, 95);
     deritive.image = imgPlane;
     deritive.rotationLock = true;
 
@@ -80,16 +80,16 @@ function handleControls() {
     if (kb.pressing('a')) {
         deritive.vel.x = -7;
         deritive.image = imgPlaneleft;
-    } 
+    }
     else if (kb.pressing('d')) {
         deritive.vel.x = 7;
         deritive.image = imgPlaneright;
-    } 
+    }
     else {
         deritive.image = imgPlane;
     }
 
-    if (kb.pressing('w')) deritive.vel.y = -5; 
+    if (kb.pressing('w')) deritive.vel.y = -5;
     if (kb.pressing('s')) deritive.vel.y = 5;
 
     if (kb.pressing('space') && !boolet) {
@@ -173,7 +173,7 @@ function updateTimerDisplay() {
 }
 
 /*******************************************************/
-function funcImg(){
+function funcImg() {
     imgPlane.resize(150, 95);
     imgPlaneleft.resize(75, 95);
     imgPlaneright.resize(75, 95);
