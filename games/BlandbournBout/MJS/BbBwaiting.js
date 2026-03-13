@@ -2,6 +2,8 @@
 -BbBwaiting.js
 -Loading screen until somebody joins
 -
+waiting... waiting... still waiting... screw this imma get some food 
+ - Leon, the guy whos making this game. I think.
 /*************************************************************/
 
 

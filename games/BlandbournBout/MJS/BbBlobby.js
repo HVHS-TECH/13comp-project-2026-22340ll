@@ -10,7 +10,7 @@ let userID, uidClass, gameID, gameNumber; // Making these exist
 //let player1, player2, gameTurn; //So far, these dont do anything and will break 
 // smthn if i remove the slash now
 let playerClass = '';
-let oppClass = '';
+let oppClass = ''; //hey boy i just bought the brand new iphone it even has an app to destroy all opps watch
 let playerReady = false;
 let oppReady = false;
 
@@ -21,10 +21,15 @@ import { fb_initialise, fb_authChanged }
     from '../../../fb_io.mjs'; // import
 
 function setup() {
-     createCanvas(WindowWidth, WindowHight);
+    createCanvas(WindowWidth, WindowHight);
 
     // Initialize Firebase  
-    fb_initialise();
+    fb_initialise().then(() => { //Authenticate. THEN define it. FAT arrow. FAT.
+        console.log('Firebase initialized');
+        setupUI();
+        checkAuthState();
+    });
+
     // Listen for auth state changes
     fb_authChanged(user => {
         if (user) {
@@ -48,8 +53,16 @@ function preload() { //Preload everyting for further purposes.
     imgBardarian = loadImage('../other/image.jpg');
     imgCleric = loadImage('../other/image.jpg');
 
-    
+    classImages = { // Map classes to images
+        'Spartan': imgSpartan,
+        'Wizard': imgWizard,
+        'Paladin': imgPaladin,
+        'Barbarian': imgBarbarian,
+        'Cleric': imgCleric,
+        'default': imgPlaceholder
+    };
 }
+
 /*************************************************************/
 //start of code
 /*************************************************************/
@@ -64,10 +77,41 @@ function setupUI() {
     createGameButton.position(20, 70);
     createGameButton.mousePressed(createNewGame);
     createGameButton.hide();
-    
+
     joinGameButton = createButton('Join Game');
     joinGameButton.position(20, 90);
     joinGameButton.mousePressed(joinGame);
     joinGameButton.hide();
 
+}
+
+async function handleLogin() {
+    try {
+        const user = await fb_signInWithGoogle();
+        console.log('Logged in:', user);
+    } catch (error) {
+        statusMessage = 'Login failed: ' + error.message;
+    }
+}
+
+async function handleLogout() { //see its diffrent becuase its diffrent
+    try {
+        await fb_signOut();
+        console.log('Logged out');
+    } catch (error) {
+        statusMessage = 'Logout failed: ' + error.message;
+    }
+}
+
+function checkAuthState() {
+    fb_onAuthStateChanged(async (user) => {
+        if (user) {
+            isAuthenticated = true;
+            userID = user.uid;
+            
+            // Check admin status
+            isAdmin = await fb_checkAdminStatus(user.uid);
+
+        }
+    });
 }
