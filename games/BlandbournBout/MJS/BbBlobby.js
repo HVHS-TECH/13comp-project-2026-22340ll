@@ -17,12 +17,14 @@ let oppReady = false;
 console.log("Authenticate");
 
 
-import { fb_initialize, fb_authChanged }
+import { fb_initialise, fb_authChanged }
     from '../../../fb_io.mjs'; // import
 
 function setup() {
+     createCanvas(WindowWidth, WindowHight);
+
     // Initialize Firebase  
-    fb_initialize();
+    fb_initialise();
     // Listen for auth state changes
     fb_authChanged(user => {
         if (user) {
@@ -64,7 +66,7 @@ function setupUI() {
     createGameButton.hide();
     
     joinGameButton = createButton('Join Game');
-    joinGameButton.position(150, 70);
+    joinGameButton.position(20, 90);
     joinGameButton.mousePressed(joinGame);
     joinGameButton.hide();
 

@@ -6,12 +6,12 @@
 
 
 
-import { fb_initialize, fb_authChanged } 
+import { fb_initialise, fb_authChanged } 
   from '../../../fb_io.mjs'; // import
 
 function setup() {
     // Initialize Firebase  
-    fb_initialize();
+    fb_initialise();
     // Listen for auth state changes
     fb_authChanged(user => {
         if (user) {

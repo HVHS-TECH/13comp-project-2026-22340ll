@@ -5,7 +5,7 @@
 
 /*************************************************************/
 
-import {  fb_initialize, fb_authChanged }
+import {  fb_initialise, fb_authChanged }
 from "../../../fb_io.mjs"; //Import
 
 function setup() {
@@ -16,7 +16,7 @@ function setup() {
     funcImg();
 
     // Initialize Firebase  
-    fb_initialize();
+    fb_initialise();
         fb_authChanged(user => {
         if (user) {
             console.log('User signed in:', user);
@@ -31,7 +31,7 @@ function setup() {
   
 }
 
-fb_initialize();
+fb_initialise();
 /*******************************************************/
 function preload() { //Preload everyting for further purposes. This should only load once.
     imgSpartan = loadImage('../other/Kratos_PS4.png'); // all property of Kratos go to sony and playstation
