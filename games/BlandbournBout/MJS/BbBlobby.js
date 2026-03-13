@@ -45,11 +45,27 @@ function preload() { //Preload everyting for further purposes.
     imgPalidin = loadImage('../other/image.jpg');
     imgBardarian = loadImage('../other/image.jpg');
     imgCleric = loadImage('../other/image.jpg');
+
+    
 }
 /*************************************************************/
 //start of code
 /*************************************************************/
 function BbB_checkGames() {
     console.log("still waiting")
+
+}
+
+function setupUI() {
+    // Game creation UI
+    createGameButton = createButton('Create New Game');
+    createGameButton.position(20, 70);
+    createGameButton.mousePressed(createNewGame);
+    createGameButton.hide();
+    
+    joinGameButton = createButton('Join Game');
+    joinGameButton.position(150, 70);
+    joinGameButton.mousePressed(joinGame);
+    joinGameButton.hide();
 
 }
