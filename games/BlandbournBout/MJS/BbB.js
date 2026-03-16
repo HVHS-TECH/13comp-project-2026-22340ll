@@ -1,7 +1,7 @@
 /*************************************************************
 -BbB.js
 -OKAY THIS IS THE ACTUAL GAME
--Everygame is a sepprate firebase database
+-Every game played here is a sepprate firebase database/string
 
 /*************************************************************/
 
