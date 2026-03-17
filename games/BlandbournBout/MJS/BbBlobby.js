@@ -162,7 +162,22 @@ async function createNewGame() {
     
     statusMessage = `Game created! Code: ${gameID}`;
     startGameListener(gameID);
+    
 }
+
+async function joinGame() {
+    if (!isAuthenticated) {
+        statusMessage = 'Please login first';
+        return;
+    }
+
+       const gameCode = gameCodeInput.value().toUpperCase();
+    if (!gameCode) {
+        statusMessage = 'Please enter a game code';
+        return;
+    }
+}
+
 
 //this is how the classes are sorted. I'm hoping that it will randomized every game to prevent total class maining.
 async function assignRandomClasses(gameId, playerIds) {
@@ -174,4 +189,11 @@ async function assignRandomClasses(gameId, playerIds) {
         const randomClass = classes[Math.floor(Math.random() * classes.length)];
         await set(ref(database, `BbB/games/${gameId}/players/${playerIds[i]}/class`), randomClass);
     }
+}
+
+async function toggleReady() {
+    if (!gameID || !userID) return;
+    
+    const newReadyState = !playerReady;
+    await set(ref(database, `BbB/games/${gameID}/players/${userID}/ready`), newReadyState);
 }

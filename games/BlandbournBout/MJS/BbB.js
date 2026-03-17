@@ -47,7 +47,7 @@ function preload() { //Preload everyting for further purposes. This should only 
 
 const gameMod = (function () {
     const api = {};
-    //Map object (Dustinpfister.github.io)
+    //Map object (https://dustinpfister.github.io/2021/12/10/js-javascript-example-turn-based-rpg/)
     api.isAtCorner = function (game, cell) {
         const map = game.map[game.mapIndex];
         const w = map.w - 1;
@@ -57,5 +57,18 @@ const gameMod = (function () {
             (cell.x === w && cell.y === h) ||
             (cell.x === w && cell.y === 0);
     };
+        // return a toIndexOptions array for the given map position in the current game map
+    var getToIndexOptions = function(game, x, y, ox, oy){
+        var toIndex = null,
+        dir = '',
+        p = game.player,
+        map = game.maps[game.mapIndex],
+        cell = mapMod.get(map, x, y),
+        mwx = game.mapIndex % game.mapWorldWidth,                 // map world x and y
+        mwy = Math.floor(game.mapIndex / game.mapWorldWidth ),
+        options = [];
+        return options;
+    };
+    api.getToIndexOptions = getToIndexOptions;
     return api;
 })();
