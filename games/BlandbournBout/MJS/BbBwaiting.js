@@ -27,6 +27,8 @@ function setup() {
   
 }
 
+
+
 function drawGameLobby() {
     // Draw game header
     fill(50);

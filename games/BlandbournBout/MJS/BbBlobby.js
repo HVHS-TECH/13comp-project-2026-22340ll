@@ -7,7 +7,7 @@
 /*************************************************************/
 // -Setup
 let userID, uidClass, gameID, gameNumber; // Making these exist
-//let player1, player2, gameTurn; (So far, these dont do anything and will break 
+let player1, player2, gameTurn; //(So far, these dont do anything and will break 
 // smthn if i remove the slash now)
 let playerClass = null;
 let oppClass = null; //hey boy i just bought the brand new iphone it even has an app to destroy all opps watch
@@ -178,7 +178,9 @@ async function createNewGame() {
 
     statusMessage = `Game created! Code: ${gameID}`;
     startGameListener(gameID);
-
+    
+    // Redirect to waiting page
+    window.location.href = '../HTML/BbBwaiting.html';
 }
 
 async function joinGame() {
@@ -191,6 +193,35 @@ async function joinGame() {
     if (!gameCode) {
         statusMessage = 'Please enter a game code';
         return;
+    }
+
+    try {
+        const gameRef = ref(database, `BbB/games/${gameCode}`);
+        const gameSnapshot = await get(gameRef);
+
+        if (!gameSnapshot.exists()) {
+            statusMessage = 'Game not found';
+            return;
+        }
+
+        const username = usernameInput.value() || auth.currentUser.displayName || 'Player';
+        gameID = gameCode;
+
+        // Add player to game
+        await set(ref(database, `BbB/games/${gameCode}/players/${userID}`), {
+            uid: userID,
+            username: username,
+            ready: false,
+            class: null,
+            health: 100
+        });
+
+        statusMessage = `Joined game: ${gameCode}`;
+        
+        // Redirect to waiting page
+        window.location.href = '../HTML/BbBwaiting.html';
+    } catch (error) {
+        statusMessage = 'Error joining game: ' + error.message;
     }
 }
 

@@ -40,8 +40,10 @@ function preload() { //Preload everyting for further purposes. This should only 
     imgBardarian = loadImage('../other/image.jpg');
     imgCleric = loadImage('../other/image.jpg');
     imgBG1 = loadImage('../other/battleback1.png'); // All backgrounds credit to Gabriel 'Nidhoggn' de Aguiar 
-                                                    // (https://opengameart.org/users/nidhoggn)
-    imgBG2 = loadImage('../other/battleback2.png');
+    imgBG2 = loadImage('../other/battleback2.png');// (https://opengameart.org/users/nidhoggn)
+    imgBG3 = loadImage('../other/battleback3.png');
+    imgBG4 = loadImage('../other/battleback9.png');
+    imgBG5 = loadImage('../other/battleback0.png');
 }
 
 
