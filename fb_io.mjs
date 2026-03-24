@@ -416,5 +416,9 @@ export {
     fb_deleteUser,
     fb_deleteScore,
     auth,
-    audioContext
+    audioContext,
+    database,
+    ref,
+    set,
+    get
 };

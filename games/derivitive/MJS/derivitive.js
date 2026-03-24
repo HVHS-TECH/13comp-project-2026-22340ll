@@ -2,6 +2,7 @@
 let deritive, boolet = null;
 let imgPlane, imgPlaneleft, imgPlaneright, imgBoolet, imgEngineHealth, imgJelifisch, imgBackGround1, imgBackGround2;
 let squish, corneria;
+let audioEnabled = false;
 
 let y1 = 0, y2 = 0, bgSpeed = 2, bgWidth, bgHeight = 1920;
 let lastAlienSpawnTime = 0, alienSpawnInterval = 1500, alienGroup;
@@ -21,9 +22,31 @@ function preload() {
     imgBackGround2 = loadImage('../other/backround2.png');
     imgJelifisch = loadImage('../other/jelifisch.gif');
 
-    squish = loadSound("../other/squish.mp3");
-    corneria = loadSound("../other/corneria.mp3");
-    corneria.setLoop(true);
+    // Sounds will be loaded after user gesture in userStartAudio()
+}
+
+/*******************************************************/
+async function userStartAudio() {
+    if (audioEnabled) return;
+    
+    try {
+        // Resume AudioContext if it exists
+        if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+        }
+        
+        // Load sounds after user gesture
+        squish = loadSound("../other/squish.mp3");
+        corneria = loadSound("../other/corneria.mp3");
+        
+        audioEnabled = true;
+        console.log("Audio enabled and sounds loaded");
+    } catch (error) {
+        console.error("Failed to enable audio:", error);
+    }
 }
 
 /*******************************************************/
@@ -58,6 +81,12 @@ function draw() {
     y2 += bgSpeed;
     if (y1 > height) y1 = y2 - bgHeight;
     if (y2 > height) y2 = y1 - bgHeight;
+
+    // Start background music if audio is enabled and not playing
+    if (audioEnabled && corneria && !corneria.isPlaying()) {
+        corneria.setLoop(true);
+        corneria.play();
+    }
 
     handleControls();
 
@@ -122,7 +151,9 @@ function handleCollisions() {
             boolet = null;
             score++;
             scoreDisplay.html('Score: ' + score);
-            squish.play();
+            if (audioEnabled && squish && squish.isLoaded()) {
+                squish.play();
+            }
         });
 
         if (boolet.y < -50) {
@@ -183,3 +214,6 @@ function funcImg() {
     imgBackGround2.resize(windowWidth, bgHeight);
     imgJelifisch.resize(50, 50);
 }
+
+// Expose functions to global scope for HTML access
+window.userStartAudio = userStartAudio;

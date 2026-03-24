@@ -13,6 +13,14 @@ let playerClass = null;
 let oppClass = null; //hey boy i just bought the brand new iphone it even has an app to destroy all opps watch
 let playerReady = false;
 let oppReady = false;
+// Initialize availableGames as an empty array
+let availableGames = [];
+// Declare image variables
+let imgPlaceholder, imgSpartan, imgWizard, imgPaladin, imgBardarian, imgCleric, classImages;
+// Declare UI variables
+let createGameButton, joinGameButton, gameCodeInput, refreshButton;
+// Declare other variables
+let statusMessage, isAuthenticated, isAdmin, database;
 
 console.log("Authenticate Please");
 
@@ -22,18 +30,11 @@ import {
     fb_onAuthStateChanged,
     fb_authChanged,
     fb_signOut,
-    fb_writeUserData,
-    fb_getUserData,
-    fb_checkUserExists,
     fb_checkAdminStatus,
-    fb_writeGameScore,
-    fb_getHighScores,
-    fb_resumeAudio,
-    fb_getAllUsers,
-    fb_getAllGameScores,
-    fb_deleteUser,
-    fb_deleteScore,
     auth,
+    ref,
+    set,
+    get
 } from '../../../fb_io.mjs';
 
 function setup() {
@@ -44,6 +45,7 @@ function setup() {
         console.log('Firebase initialized');
         setupUI();
         checkAuthState();
+        refreshAvailableGames(); // Fetch available games on setup
     });
 
     // Listen for auth state changes
@@ -83,11 +85,23 @@ function preload() { //Preload everyting for further purposes.
 //start of code
 /*************************************************************/
 function BbB_checkGames() {
+    // TODO: Implement game checking logic here.
     console.log("still waiting")
 
 }
 
+function BbB_checkScores() {
+    // TODO: Implement score checking logic here.
+    console.log("Checking scores");
+}
+
 function setupUI() {
+    // Username input
+    usernameInput = createInput('');
+    usernameInput.position(20, 20);
+    usernameInput.attribute('placeholder', 'Enter Username');
+    usernameInput.hide();
+
     // Game creation UI
     createGameButton = createButton('Create New Game');
     createGameButton.position(20, 70);
@@ -108,26 +122,31 @@ function setupUI() {
     refreshButton.position(280, 70);
     refreshButton.mousePressed(refreshAvailableGames);
     refreshButton.hide();
-
 }
 
-async function handleLogin() {
+// Fetch available games from the database and update availableGames array
+async function refreshAvailableGames() {
+    if (typeof database === 'undefined') return;
+    const gamesRef = ref(database, 'BbB/games');
     try {
-        const user = await fb_signInWithGoogle();
-        console.log('Logged in:', user);
+        const snapshot = await get(gamesRef);
+        if (snapshot.exists()) {
+            const gamesObj = snapshot.val();
+            availableGames = Object.values(gamesObj)
+                .filter(game => game.status === 'waiting')
+                .map(game => ({
+                    id: game.gameId,
+                    players: game.players || {}
+                }));
+        } else {
+            availableGames = [];
+        }
     } catch (error) {
-        statusMessage = 'Login failed: ' + error.message;
+        console.error('Error fetching games:', error);
+        availableGames = [];
     }
 }
 
-async function handleLogout() { //see its diffrent becuase its diffrent
-    try {
-        await fb_signOut();
-        console.log('Logged out');
-    } catch (error) {
-        statusMessage = 'Logout failed: ' + error.message;
-    }
-}
 
 function checkAuthState() {
     fb_onAuthStateChanged(async (user) => {
@@ -138,6 +157,22 @@ function checkAuthState() {
             // Check admin status
             isAdmin = await fb_checkAdminStatus(user.uid);
 
+            // Show UI elements
+            usernameInput.show();
+            createGameButton.show();
+            joinGameButton.show();
+            gameCodeInput.show();
+            refreshButton.show();
+        } else {
+            isAuthenticated = false;
+            isAdmin = false;
+
+            // Hide UI elements
+            usernameInput.hide();
+            createGameButton.hide();
+            joinGameButton.hide();
+            gameCodeInput.hide();
+            refreshButton.hide();
         }
     });
 }
@@ -178,7 +213,7 @@ async function createNewGame() {
 
     statusMessage = `Game created! Code: ${gameID}`;
     startGameListener(gameID);
-    
+
     // Redirect to waiting page
     window.location.href = '../HTML/BbBwaiting.html';
 }
@@ -217,7 +252,7 @@ async function joinGame() {
         });
 
         statusMessage = `Joined game: ${gameCode}`;
-        
+
         // Redirect to waiting page
         window.location.href = '../HTML/BbBwaiting.html';
     } catch (error) {
@@ -258,7 +293,7 @@ function draw() {
     fill(50);
     textSize(32);
     textAlign(CENTER, TOP);
-    text('Blandbourn Bout', width / 2, 60);
+    text('BLANDBOURN BOUT', width / 2, 60);
     //Make status message
     if (statusMessage) {
         fill(0);
@@ -297,3 +332,107 @@ function drawLobby() {
     }
 }
 
+// Moved form BbBwaiting.js for testing
+function drawGameLobby() {
+    // Draw game header
+    fill(50);
+    textSize(24);
+    textAlign(CENTER);
+    text(`Game Code: ${gameID}`, width / 2, 200);
+
+    // Draw players
+    const player1X = width / 2 - 200;
+    const player2X = width / 2 + 200;
+    const playerY = 300;
+
+    // Define currentPlayer and opponentPlayer for demo purposes
+    const currentPlayer = auth.currentUser?.displayName || 'Player 1';
+    const opponentPlayer = { username: 'Player 2' };
+
+    // Player 1 (current player)
+    drawPlayerBox(player1X, playerY, currentPlayer, playerClass, playerReady);
+    // VS TEXT
+    fill(100);
+    textSize(32);
+    text('VS', width / 2, playerY + 75);
+    // Player 2 (opponent)
+    drawPlayerBox(player2X, playerY, opponentPlayer, oppClass, oppReady);
+}
+
+// MAKE PLAYER
+function drawPlayerBox(x, y, player, className, ready) {
+    // Draw player container
+    stroke(0);
+    strokeWeight(2);
+    fill(ready ? 200 : 240);
+    rect(x - 100, y - 50, 200, 250);
+    // Draw class image
+    const classImage = classImages[className] || classImages['default'];
+    image(classImage, x - 75, y - 25, 150, 150);
+    // Draw player info
+    noStroke();
+    fill(0);
+    textSize(16);
+    textAlign(CENTER);
+    let displayName = (typeof player === 'object' && player !== null && 'username' in player)
+        ? player.username
+        : (typeof player === 'string' ? player : 'Waiting...');
+    text(displayName, x, y + 140);
+    if (className) {
+        textSize(14);
+        fill(100);
+        text(className, x, y + 160);
+    }
+    // Ready indicator
+    if (ready) {
+        fill(0, 150, 0);
+        text('Ready!', x, y + 180);
+    }
+}
+
+//Create game list
+function drawAvailableGames() {
+    fill(50);
+    textSize(20);
+    textAlign(LEFT);
+    text('Available Games:', 20, 200);
+    let y = 240;
+    availableGames.forEach((game, index) => {
+        const playerCount = Object.keys(game.players || {}).length;
+        // Game box
+        fill(240);
+        stroke(0);
+        rect(20, y - 15, 400, 40);
+
+        // Game info
+        fill(0);
+        textSize(16);
+        text(`Game ${game.id} - ${playerCount}/2 players`, 30, y + 10);
+        // Join button
+        fill(0, 100, 200);
+        rect(350, y - 10, 60, 30);
+        fill(255);
+        textSize(14);
+            gameCodeInput.value(game.gameId);
+            joinGame();
+        if (mouseIsPressed && mouseX > 350 && mouseX < 410 && mouseY > y - 10 && mouseY < y + 20) {
+            gameCodeInput.value(game.id);
+            joinGame();
+        }
+        y += 50;
+    }
+    );
+}
+
+// Clean up Firebase listeners when leaving the page
+function windowWillUnload() {
+    if (gameInterval) {
+        // Clean up Firebase listener
+        // off() would be called here
+    }
+}
+
+// Expose sketch functions to global scope for p5.js
+window.setup = setup;
+window.preload = preload;
+window.draw = draw;
