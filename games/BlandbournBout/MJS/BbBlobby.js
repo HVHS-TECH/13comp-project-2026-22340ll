@@ -9,18 +9,19 @@
 let userID, uidClass, gameID, gameNumber; // Making these exist
 let player1, player2, gameTurn; //(So far, these dont do anything and will break 
 // smthn if i remove the slash now)
-let playerClass = null;
-let oppClass = null; //hey boy i just bought the brand new iphone it even has an app to destroy all opps watch
+let playerClass = '';
+let oppClass = '';
 let playerReady = false;
 let oppReady = false;
 // Initialize availableGames as an empty array
 let availableGames = [];
 // Declare image variables
-let imgPlaceholder, imgSpartan, imgWizard, imgPaladin, imgBardarian, imgCleric, classImages;
+let imgPlaceholder, imgSpartan, imgWizard, imgPaladin, imgBarbarian, imgCleric, classImages;
 // Declare UI variables
-let createGameButton, joinGameButton, gameCodeInput, refreshButton;
+let loginButton, logoutButton, createGameButton, joinGameButton, gameCodeInput, refreshButton, usernameInput;
 // Declare other variables
-let statusMessage, isAuthenticated, isAdmin, database;
+let statusMessage, isAuthenticated, isAdmin;
+let currentPlayer, opponentPlayer, gameInterval;
 
 console.log("Authenticate Please");
 
@@ -34,7 +35,9 @@ import {
     auth,
     ref,
     set,
-    get
+    get,
+    onValue,
+    database
 } from '../../../fb_io.mjs';
 
 function setup() {
@@ -66,50 +69,123 @@ function setup() {
 function preload() { //Preload everyting for further purposes.
     imgPlaceholder = loadImage('../other/images.jpg'); //placeholder
     imgSpartan = loadImage('../other/Kratos_PS4.png'); // all property of Kratos go to Sony and Playstation. Also using Kratos as the spartan just seems funny to me.
-    imgWizard = loadImage('../other/image.jpg');
-    imgPaladin = loadImage('../other/image.jpg');
-    imgBardarian = loadImage('../other/image.jpg');
-    imgCleric = loadImage('../other/image.jpg');
+    imgWizard = loadImage('../other/BbBWiz.png');
+    imgPaladin = loadImage('../other/BbBPal.png');
+    imgBarbarian = loadImage('../other/BbBBarb.png');
+    imgCleric = loadImage('../other/BbBCler.png');
 
     classImages = { // Map classes to images
         'Spartan': imgSpartan,
         'Wizard': imgWizard,
         'Paladin': imgPaladin,
-        'Barbarian': imgBardarian,
+        'Barbarian': imgBarbarian,
         'Cleric': imgCleric,
         'default': imgPlaceholder
     };
 }
 
-/*************************************************************/
-//start of code
-/*************************************************************/
-function BbB_checkGames() {
-    // TODO: Implement game checking logic here.
-    console.log("still waiting")
-
+function startLobbyListener() {
+    const gamesRef = ref(database, 'BbB/games');
+    onValue(gamesRef, (snapshot) => {
+        if (snapshot.exists()) {
+            availableGames = [];
+            snapshot.forEach((childSnapshot) => {
+                const game = childSnapshot.val();
+                if (game.status === 'waiting' && Object.keys(game.players || {}).length < 2) {
+                    availableGames.push({
+                        id: childSnapshot.key,
+                        ...game
+                    });
+                }
+            });
+        }
+    });
 }
 
-function BbB_checkScores() {
-    // TODO: Implement score checking logic here.
-    console.log("Checking scores");
+function startGameListener(gameId) {
+    const gameRef = ref(database, `BbB/games/${gameId}`);
+    gameInterval = onValue(gameRef, (snapshot) => {
+        if (!snapshot.exists()) return;
+        const gameData = snapshot.val();
+        const players = gameData.players || {};
+        const playerIds = Object.keys(players);
+        currentPlayer = players[userID];
+        opponentPlayer = playerIds.find(id => id !== userID) ? players[playerIds.find(id => id !== userID)] : null;
+        playerReady = currentPlayer?.ready || false;
+        oppReady = opponentPlayer?.ready || false;
+        playerClass = currentPlayer?.class || '';
+        oppClass = opponentPlayer?.class || '';
+    });
+}
+
+function updateUIForAuth(loggedIn) {
+    if (loggedIn) {
+        loginButton.hide();
+        logoutButton.show();
+        createGameButton.show();
+        joinGameButton.show();
+        usernameInput.show();
+        gameCodeInput.show();
+        refreshButton.show();
+        
+        // Set username if available
+        if (auth.currentUser) {
+            usernameInput.value(auth.currentUser.displayName || '');
+        }
+    } else {
+        loginButton.show();
+        logoutButton.hide();
+        createGameButton.hide();
+        joinGameButton.hide();
+        usernameInput.hide();
+        gameCodeInput.hide();
+        refreshButton.hide();
+    }
+}
+
+async function handleLogin() {
+    try {
+        const user = await fb_signInWithGoogle();
+        console.log('Logged in:', user);
+    } catch (error) {
+        statusMessage = 'Login failed: ' + error.message;
+    }
+}
+
+async function handleLogout() {
+    try {
+        await fb_signOut();
+        console.log('Logged out');
+    } catch (error) {
+        statusMessage = 'Logout failed: ' + error.message;
+    }
 }
 
 function setupUI() {
+    // Login UI
+    loginButton = createButton('Login with Google');
+    loginButton.position(20, 20);
+    loginButton.mousePressed(handleLogin);
+    
+    logoutButton = createButton('Logout');
+    logoutButton.position(150, 20);
+    logoutButton.mousePressed(handleLogout);
+    logoutButton.hide();
+
     // Username input
     usernameInput = createInput('');
-    usernameInput.position(20, 20);
+    usernameInput.position(20, 70);
     usernameInput.attribute('placeholder', 'Enter Username');
     usernameInput.hide();
 
     // Game creation UI
     createGameButton = createButton('Create New Game');
-    createGameButton.position(20, 70);
+    createGameButton.position(20, 110);
     createGameButton.mousePressed(createNewGame);
     createGameButton.hide();
 
     joinGameButton = createButton('Join Game');
-    joinGameButton.position(20, 90);
+    joinGameButton.position(150, 110);
     joinGameButton.mousePressed(joinGame);
     joinGameButton.hide();
 
@@ -153,26 +229,14 @@ function checkAuthState() {
         if (user) {
             isAuthenticated = true;
             userID = user.uid;
-
-            // Check admin status
             isAdmin = await fb_checkAdminStatus(user.uid);
-
-            // Show UI elements
-            usernameInput.show();
-            createGameButton.show();
-            joinGameButton.show();
-            gameCodeInput.show();
-            refreshButton.show();
+            updateUIForAuth(true);
+            startLobbyListener();
         } else {
             isAuthenticated = false;
+            userID = null;
             isAdmin = false;
-
-            // Hide UI elements
-            usernameInput.hide();
-            createGameButton.hide();
-            joinGameButton.hide();
-            gameCodeInput.hide();
-            refreshButton.hide();
+            updateUIForAuth(false);
         }
     });
 }
@@ -357,6 +421,25 @@ function drawGameLobby() {
     text('VS', width / 2, playerY + 75);
     // Player 2 (opponent)
     drawPlayerBox(player2X, playerY, opponentPlayer, oppClass, oppReady);
+    
+    // Ready button if not ready
+    if (!playerReady && opponentPlayer) {
+        fill(0, 150, 0);
+        rect(width / 2 - 60, 450, 120, 40);
+        fill(255);
+        textSize(18);
+        textAlign(CENTER);
+        text('Ready Up', width / 2, 475);
+        if (mouseIsPressed && mouseX > width / 2 - 60 && mouseX < width / 2 + 60 && mouseY > 450 && mouseY < 490) {
+            toggleReady();
+        }
+    }
+    
+    if (playerReady && oppReady) {
+        fill(0, 150, 0);
+        textSize(20);
+        text('Both players ready! Starting game...', width / 2, 520);
+    }
 }
 
 // MAKE PLAYER
@@ -413,8 +496,7 @@ function drawAvailableGames() {
         rect(350, y - 10, 60, 30);
         fill(255);
         textSize(14);
-            gameCodeInput.value(game.gameId);
-            joinGame();
+        text('Join', 380, y + 10);
         if (mouseIsPressed && mouseX > 350 && mouseX < 410 && mouseY > y - 10 && mouseY < y + 20) {
             gameCodeInput.value(game.id);
             joinGame();

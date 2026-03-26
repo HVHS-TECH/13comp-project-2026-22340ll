@@ -13,6 +13,7 @@ import {
     ref,
     set,
     get,
+    onValue,
     query,
     orderByChild,
     limitToLast,
@@ -420,5 +421,6 @@ export {
     database,
     ref,
     set,
-    get
+    get,
+    onValue
 };
