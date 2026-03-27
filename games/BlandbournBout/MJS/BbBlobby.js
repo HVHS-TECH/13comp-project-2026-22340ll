@@ -18,7 +18,7 @@ let availableGames = [];
 // Declare image variables
 let imgPlaceholder, imgSpartan, imgWizard, imgPaladin, imgBarbarian, imgCleric, classImages;
 // Declare UI variables
-let loginButton, logoutButton, createGameButton, joinGameButton, gameCodeInput, refreshButton, usernameInput;
+let loginButton, LogoutButton, createGameButton, joinGameButton, gameCodeInput, refreshButton, usernameInput;
 // Declare other variables
 let statusMessage, isAuthenticated, isAdmin;
 let currentPlayer, opponentPlayer, gameInterval;
@@ -37,33 +37,27 @@ import {
     set,
     get,
     onValue,
-    database
+    update,
+    push
 } from '../../../fb_io.mjs';
 
 function setup() {
     createCanvas(windowWidth, windowHeight);
 
+    // Check if coming from redirect
+    const savedGameID = sessionStorage.getItem('gameID');
+    if (savedGameID && window.location.pathname.includes('BbBlobby.html')) {
+        gameID = savedGameID;
+        waitingForOpponent = true;
+        startGameListener(savedGameID);
+    }
+
     // Initialize Firebase  
-    fb_initialise().then(() => { //Authenticate. THEN define it. FAT arrow. FAT.
+    fb_initialise().then(() => {
         console.log('Firebase initialized');
         setupUI();
         checkAuthState();
-        refreshAvailableGames(); // Fetch available games on setup
     });
-
-    // Listen for auth state changes
-    fb_authChanged(user => {
-        if (user) {
-            console.log('User signed in:', user);
-            // theres a user
-        } else {
-            console.log('No user signed in');
-            // theres no user
-        }
-    });
-    BbB_checkGames()
-    BbB_checkScores();
-
 }
 
 function preload() { //Preload everyting for further purposes.
@@ -85,16 +79,19 @@ function preload() { //Preload everyting for further purposes.
 }
 
 function startLobbyListener() {
-    const gamesRef = ref(database, 'BbB/games');
+    //Listen to gameScore/BbB path
+    const gamesRef = ref(database, 'gameScore/BbB');
     onValue(gamesRef, (snapshot) => {
         if (snapshot.exists()) {
             availableGames = [];
             snapshot.forEach((childSnapshot) => {
                 const game = childSnapshot.val();
-                if (game.status === 'waiting' && Object.keys(game.players || {}).length < 2) {
+                // Check for waiting games
+                if (game.uid1 && (!game.uid2 || game.uid2 === "") && !game.gameOn) {
                     availableGames.push({
-                        id: childSnapshot.key,
-                        ...game
+                        gameID: childSnapshot.key,
+                        uid1: game.uid1,
+                        Wait: game.Wait || ""
                     });
                 }
             });
@@ -103,38 +100,52 @@ function startLobbyListener() {
 }
 
 function startGameListener(gameId) {
-    const gameRef = ref(database, `BbB/games/${gameId}`);
+    const gameRef = ref(database, `gameScore/BbB/${gameId}`);
+    if (gameInterval) {
+        // Clean up
+    }
     gameInterval = onValue(gameRef, (snapshot) => {
-        if (!snapshot.exists()) return;
+        if (!snapshot.exists()) {
+            statusMessage = 'Game no longer exists';
+            gameID = null;
+            waitingForOpponent = false;
+            return;
+        }
+
         const gameData = snapshot.val();
-        const players = gameData.players || {};
-        const playerIds = Object.keys(players);
-        currentPlayer = players[userID];
-        opponentPlayer = playerIds.find(id => id !== userID) ? players[playerIds.find(id => id !== userID)] : null;
-        playerReady = currentPlayer?.ready || false;
-        oppReady = opponentPlayer?.ready || false;
-        playerClass = currentPlayer?.class || '';
-        oppClass = opponentPlayer?.class || '';
+
+        // Check if both players are in and game is ready to start
+        if (gameData.uid1 && gameData.uid2 && gameData.uid2 !== "" && !gameData.gameOn) {
+            // Both players joined, start the game
+            update(ref(database, `gameScore/BbB/${gameId}`), {
+                gameOn: true
+            });
+
+            statusMessage = 'Both players joined! Starting game...';
+            setTimeout(() => {
+                window.location.href = `../HTML/BbBgame.html?gameID=${gameId}`;
+            }, 2000);
+        }
     });
 }
 
 function updateUIForAuth(loggedIn) {
     if (loggedIn) {
         loginButton.hide();
-        logoutButton.show();
+        LogoutButton.show();
         createGameButton.show();
         joinGameButton.show();
         usernameInput.show();
         gameCodeInput.show();
         refreshButton.show();
-        
+
         // Set username if available
         if (auth.currentUser) {
             usernameInput.value(auth.currentUser.displayName || '');
         }
     } else {
         loginButton.show();
-        logoutButton.hide();
+        LogoutButton.hide();
         createGameButton.hide();
         joinGameButton.hide();
         usernameInput.hide();
@@ -143,7 +154,7 @@ function updateUIForAuth(loggedIn) {
     }
 }
 
-async function handleLogin() {
+async function handleLogin() { //Check weather sombody has logged in or not
     try {
         const user = await fb_signInWithGoogle();
         console.log('Logged in:', user);
@@ -152,7 +163,7 @@ async function handleLogin() {
     }
 }
 
-async function handleLogout() {
+async function handleLogout() { //Viceversa, but with logout
     try {
         await fb_signOut();
         console.log('Logged out');
@@ -166,11 +177,11 @@ function setupUI() {
     loginButton = createButton('Login with Google');
     loginButton.position(20, 20);
     loginButton.mousePressed(handleLogin);
-    
-    logoutButton = createButton('Logout');
-    logoutButton.position(150, 20);
-    logoutButton.mousePressed(handleLogout);
-    logoutButton.hide();
+
+    LogoutButton = createButton('Logout');
+    LogoutButton.position(150, 20);
+    LogoutButton.mousePressed(handleLogout);
+    LogoutButton.hide();
 
     // Username input
     usernameInput = createInput('');
@@ -202,27 +213,36 @@ function setupUI() {
 
 // Fetch available games from the database and update availableGames array
 async function refreshAvailableGames() {
-    if (typeof database === 'undefined') return;
-    const gamesRef = ref(database, 'BbB/games');
+    if (!isAuthenticated) return;
+
     try {
+        // Use correct path gameScore/BbB
+        const gamesRef = ref(database, 'gameScore/BbB');
         const snapshot = await get(gamesRef);
+
         if (snapshot.exists()) {
-            const gamesObj = snapshot.val();
-            availableGames = Object.values(gamesObj)
-                .filter(game => game.status === 'waiting')
-                .map(game => ({
-                    id: game.gameId,
-                    players: game.players || {}
-                }));
+            availableGames = [];
+            snapshot.forEach((childSnapshot) => {
+                const game = childSnapshot.val();
+                // Check for waiting games (has uid1 but no uid2, and game not active)
+                if (game.uid1 && (!game.uid2 || game.uid2 === "") && !game.gameOn) {
+                    availableGames.push({
+                        gameID: childSnapshot.key,
+                        uid1: game.uid1,
+                        Wait: game.Wait || ""
+                    });
+                }
+            });
         } else {
             availableGames = [];
         }
+
+        statusMessage = `Found ${availableGames.length} available games`;
     } catch (error) {
         console.error('Error fetching games:', error);
-        availableGames = [];
+        statusMessage = 'Error refreshing games';
     }
 }
-
 
 function checkAuthState() {
     fb_onAuthStateChanged(async (user) => {
@@ -251,35 +271,39 @@ async function createNewGame() {
 
     // Generate random game ID
     gameID = Math.random().toString(36).substring(2, 8).toUpperCase();
-    gameNumber = Date.now();
 
-    // Create game in Firebase
-    const gameRef = ref(database, `BbB/games/${gameID}`);
+    // Get random class
+    const classes = ['Barbarian', 'Cleric', 'Wizard', 'Paladin', 'Spartan'];
+    const randomClass = classes[Math.floor(Math.random() * classes.length)];
+    playerClass = randomClass;
+
+    // Create game in Firebase - MATCH YOUR STRUCTURE
+    const gameRef = ref(database, `gameScore/BbB/${gameID}`);
     await set(gameRef, {
-        gameId: gameID,
-        gameNumber: gameNumber,
-        status: 'waiting',
-        createdBy: userID,
-        createdAt: new Date().toISOString(),
-        players: {
-            [userID]: {
-                uid: userID,
-                username: username,
-                ready: false,
-                class: '',
-                health: 100
-            }
-        },
+        gameID: gameID,
+        uid1: userID,
+        uid2: "",
+        Wait: "",
         gameOn: false,
         turn: userID,
-        dmg: 0
+        DMG: 0
     });
 
-    statusMessage = `Game created! Code: ${gameID}`;
-    startGameListener(gameID);
+    // Store player info in separate node or in users
+    await set(ref(database, `users/${userID}/currentGame`), gameID);
+    await set(ref(database, `users/${userID}/currentClass`), randomClass);
 
-    // Redirect to waiting page
-    window.location.href = '../HTML/BbBwaiting.html';
+    // Store game state in sessionStorage for waiting page
+    sessionStorage.setItem('gameID', gameID);
+    sessionStorage.setItem('playerClass', randomClass);
+    sessionStorage.setItem('isHost', 'true');
+
+    statusMessage = `Game created! Code: ${gameID}`;
+
+    //Navigate to waiting.html
+    setTimeout(() => {
+        window.location.href = '../HTML/BbBwaiting.html';
+    }, 1500);
 }
 
 async function joinGame() {
@@ -295,7 +319,8 @@ async function joinGame() {
     }
 
     try {
-        const gameRef = ref(database, `BbB/games/${gameCode}`);
+        // Check if game exists
+        const gameRef = ref(database, `gameScore/BbB/${gameCode}`);
         const gameSnapshot = await get(gameRef);
 
         if (!gameSnapshot.exists()) {
@@ -303,29 +328,58 @@ async function joinGame() {
             return;
         }
 
+        const gameData = gameSnapshot.val();
+
+        // Check if game already has 2 players
+        if (gameData.uid2 && gameData.uid2 !== "") {
+            statusMessage = 'Game is full';
+            return;
+        }
+
+        // Check if player is already in game
+        if (gameData.uid1 === userID) {
+            statusMessage = 'You are already in this game';
+            sessionStorage.setItem('gameID', gameCode);
+            window.location.href = '../HTML/BbBwaiting.html';
+            return;
+        }
+
         const username = usernameInput.value() || auth.currentUser.displayName || 'Player';
-        gameID = gameCode;
+
+        // Get random class for joining player
+        const classes = ['Barbarian', 'Cleric', 'Wizard', 'Paladin', 'Spartan'];
+        const randomClass = classes[Math.floor(Math.random() * classes.length)];
 
         // Add player to game
-        await set(ref(database, `BbB/games/${gameCode}/players/${userID}`), {
-            uid: userID,
-            username: username,
-            ready: false,
-            class: null,
-            health: 100
+        await update(ref(database, `gameScore/BbB/${gameCode}`), {
+            uid2: userID,
+            Wait: username
         });
+
+        // Store player info
+        await set(ref(database, `users/${userID}/currentGame`), gameCode);
+        await set(ref(database, `users/${userID}/currentClass`), randomClass);
+        await set(ref(database, `users/${userID}/playerName`), username);
+
+        // Store in sessionStorage for waiting page
+        sessionStorage.setItem('gameID', gameCode);
+        sessionStorage.setItem('playerClass', randomClass);
+        sessionStorage.setItem('isHost', 'false');
 
         statusMessage = `Joined game: ${gameCode}`;
 
-        // Redirect to waiting page
-        window.location.href = '../HTML/BbBwaiting.html';
+        //Navigate to waiting.html
+        setTimeout(() => {
+            window.location.href = '../HTML/BbBwaiting.html';
+        }, 1500);
+
     } catch (error) {
         statusMessage = 'Error joining game: ' + error.message;
     }
 }
 
 
-//this is how the classes are sorted. I'm hoping that it will randomized every game to prevent total class maining.
+// This is how the classes are sorted. I'm hoping that it will randomized every game to prevent total class maining.
 async function assignRandomClasses(gameId, playerIds) {
     const classes = ['Barbarian', 'Cleric', 'Wizard', 'Paladin', 'Spartan'];
 
@@ -421,7 +475,7 @@ function drawGameLobby() {
     text('VS', width / 2, playerY + 75);
     // Player 2 (opponent)
     drawPlayerBox(player2X, playerY, opponentPlayer, oppClass, oppReady);
-    
+
     // Ready button if not ready
     if (!playerReady && opponentPlayer) {
         fill(0, 150, 0);
@@ -434,7 +488,7 @@ function drawGameLobby() {
             toggleReady();
         }
     }
-    
+
     if (playerReady && oppReady) {
         fill(0, 150, 0);
         textSize(20);
@@ -479,31 +533,34 @@ function drawAvailableGames() {
     textSize(20);
     textAlign(LEFT);
     text('Available Games:', 20, 200);
+
     let y = 240;
     availableGames.forEach((game, index) => {
-        const playerCount = Object.keys(game.players || {}).length;
         // Game box
         fill(240);
         stroke(0);
         rect(20, y - 15, 400, 40);
 
-        // Game info
+        // Show game info
         fill(0);
         textSize(16);
-        text(`Game ${game.id} - ${playerCount}/2 players`, 30, y + 10);
+        let playerCount = game.uid1 ? 1 : 0;
+        text(`Game ${game.gameID} - ${playerCount}/2 players`, 30, y + 10);
+
         // Join button
         fill(0, 100, 200);
         rect(350, y - 10, 60, 30);
         fill(255);
         textSize(14);
         text('Join', 380, y + 10);
+
+        // Check click
         if (mouseIsPressed && mouseX > 350 && mouseX < 410 && mouseY > y - 10 && mouseY < y + 20) {
-            gameCodeInput.value(game.id);
+            gameCodeInput.value(game.gameID);
             joinGame();
         }
         y += 50;
-    }
-    );
+    });
 }
 
 // Clean up Firebase listeners when leaving the page

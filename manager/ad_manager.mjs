@@ -74,8 +74,8 @@ import { getDatabase, ref, update, remove, get }
 
 // Import all constants & functions required from fb_io module
 // ENSURE THE IMPORTED FUNCTION NAMES & MODULE THEY ARE FROM ARE CORRECT//<=======
-import { fb_initialize, fb_authChanged }
-  from './fb_io.mjs'; // import
+import { fb_initialise, fb_authChanged }
+  from '../../fb_io.mjs'; // import
 
 /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 //  ad_manager EVENT listeners
@@ -90,7 +90,7 @@ const AD_BTN_SI = document.getElementById("b_ad_SI");
 // Functions you want to call when the page loads
 /**************************************************************/
 window.addEventListener('DOMContentLoaded', async () => {
-  await fb_initialize();
+  await fb_initialise();
   fb_authChanged();
 
   // Check admin status before showing anything
