@@ -1,4 +1,4 @@
-/*******************************************************/
+// derivitive.js - Convert to module syntax
 let deritive, boolet = null;
 let imgPlane, imgPlaneleft, imgPlaneright, imgBoolet, imgEngineHealth, imgJelifisch, imgBackGround1, imgBackGround2;
 let squish, corneria;
@@ -11,6 +11,46 @@ let gameStartTime;
 let currentTime = 0;
 let timerDisplay;
 
+const hasP5LoadSound = typeof window.loadSound === 'function';
+function loadGameSound(path) {
+    if (hasP5LoadSound) {
+        return loadSound(path);
+    }
+
+    const audio = new Audio(path);
+    audio.preload = 'auto';
+    audio.load();
+    return audio;
+}
+
+function soundPlay(sound, options = {}) {
+    if (!sound) return;
+    const { loop = false } = options;
+    if (typeof sound.setLoop === 'function') {
+        sound.setLoop(loop);
+    } else {
+        sound.loop = loop;
+    }
+    if (typeof sound.play === 'function') {
+        sound.play();
+    }
+}
+
+function soundIsPlaying(sound) {
+    if (!sound) return false;
+    if (typeof sound.isPlaying === 'function') return sound.isPlaying();
+    return !sound.paused && !sound.ended;
+}
+
+function soundIsLoaded(sound) {
+    if (!sound) return false;
+    if (typeof sound.isLoaded === 'function') return sound.isLoaded();
+    return sound.readyState >= 2;
+}
+
+// Export functions that need to be accessed
+window.gameUserStartAudio = userStartAudio;
+
 /*******************************************************/
 function preload() {
     imgPlane = loadImage('../other/derivite.png');
@@ -21,8 +61,6 @@ function preload() {
     imgBackGround1 = loadImage('../other/backround1.png');
     imgBackGround2 = loadImage('../other/backround2.png');
     imgJelifisch = loadImage('../other/jelifisch.gif');
-
-    // Sounds will be loaded after user gesture in userStartAudio()
 }
 
 /*******************************************************/
@@ -30,7 +68,7 @@ async function userStartAudio() {
     if (audioEnabled) return;
     
     try {
-        // Resume AudioContext if it exists
+        // Resume AudioContext
         if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') {
@@ -38,12 +76,17 @@ async function userStartAudio() {
             }
         }
         
-        // Load sounds after user gesture
-        squish = loadSound("../other/squish.mp3");
-        corneria = loadSound("../other/corneria.mp3");
+        // Load sounds using p5 if available, otherwise fallback to Audio
+        squish = loadGameSound("../other/squish.mp3");
+        corneria = loadGameSound("../other/corneria.mp3");
         
         audioEnabled = true;
-        console.log("Audio enabled and sounds loaded");
+        console.log("Audio enabled");
+        
+        // Start background music
+        if (corneria) {
+            soundPlay(corneria, { loop: true });
+        }
     } catch (error) {
         console.error("Failed to enable audio:", error);
     }
@@ -83,9 +126,8 @@ function draw() {
     if (y2 > height) y2 = y1 - bgHeight;
 
     // Start background music if audio is enabled and not playing
-    if (audioEnabled && corneria && !corneria.isPlaying()) {
-        corneria.setLoop(true);
-        corneria.play();
+    if (audioEnabled && corneria && !soundIsPlaying(corneria)) {
+        soundPlay(corneria, { loop: true });
     }
 
     handleControls();
@@ -143,7 +185,6 @@ function spawnAlien() {
 
 /*******************************************************/
 function handleCollisions() {
-
     if (boolet) {
         boolet.overlaps(alienGroup, (bullet, enemy) => {
             enemy.remove();
@@ -151,8 +192,8 @@ function handleCollisions() {
             boolet = null;
             score++;
             scoreDisplay.html('Score: ' + score);
-            if (audioEnabled && squish && squish.isLoaded()) {
-                squish.play();
+            if (audioEnabled && squish && soundIsLoaded(squish)) {
+                soundPlay(squish);
             }
         });
 
@@ -162,12 +203,16 @@ function handleCollisions() {
         }
     }
 
-    deritive.collides(alienGroup, (player, enemy) => {
+    deritive.collides(alienGroup, async (player, enemy) => {
         enemy.remove();
         health--;
         updateHealthDisplay();
 
         if (health <= 0) {
+            // Save score to Firebase before redirecting
+            if (window.firebaseHelpers && window.firebaseAuth && window.firebaseAuth.currentUser) {
+                await window.firebaseHelpers.saveScore('derivitive', score);
+            }
             window.location.href = "../HTML/lose.html?score=" + score;
         }
     });
@@ -214,6 +259,3 @@ function funcImg() {
     imgBackGround2.resize(windowWidth, bgHeight);
     imgJelifisch.resize(50, 50);
 }
-
-// Expose functions to global scope for HTML access
-window.userStartAudio = userStartAudio;

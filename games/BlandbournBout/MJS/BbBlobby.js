@@ -13,12 +13,13 @@ let playerClass = '';
 let oppClass = '';
 let playerReady = false;
 let oppReady = false;
+let waitingForOpponent = false;
 // Initialize availableGames as an empty array
 let availableGames = [];
 // Declare image variables
 let imgPlaceholder, imgSpartan, imgWizard, imgPaladin, imgBarbarian, imgCleric, classImages;
 // Declare UI variables
-let loginButton, LogoutButton, createGameButton, joinGameButton, gameCodeInput, refreshButton, usernameInput;
+let loginButton, LogoutButton, getoutButton, createGameButton, joinGameButton, gameCodeInput, refreshButton, usernameInput;
 // Declare other variables
 let statusMessage, isAuthenticated, isAdmin;
 let currentPlayer, opponentPlayer, gameInterval;
@@ -33,12 +34,12 @@ import {
     fb_signOut,
     fb_checkAdminStatus,
     auth,
+    database,
     ref,
     set,
     get,
     onValue,
-    update,
-    push
+    update
 } from '../../../fb_io.mjs';
 
 function setup() {
@@ -122,9 +123,7 @@ function startGameListener(gameId) {
             });
 
             statusMessage = 'Both players joined! Starting game...';
-            setTimeout(() => {
-                window.location.href = `../HTML/BbBgame.html?gameID=${gameId}`;
-            }, 2000);
+
         }
     });
 }
@@ -133,6 +132,7 @@ function updateUIForAuth(loggedIn) {
     if (loggedIn) {
         loginButton.hide();
         LogoutButton.show();
+        getoutButton.show();
         createGameButton.show();
         joinGameButton.show();
         usernameInput.show();
@@ -146,6 +146,7 @@ function updateUIForAuth(loggedIn) {
     } else {
         loginButton.show();
         LogoutButton.hide();
+        getoutButton.hide();
         createGameButton.hide();
         joinGameButton.hide();
         usernameInput.hide();
@@ -172,6 +173,10 @@ async function handleLogout() { //Viceversa, but with logout
     }
 }
 
+function handleExitToSelection() {
+    window.location.href = '/startscreen.html';
+}
+
 function setupUI() {
     // Login UI
     loginButton = createButton('Login with Google');
@@ -182,6 +187,11 @@ function setupUI() {
     LogoutButton.position(150, 20);
     LogoutButton.mousePressed(handleLogout);
     LogoutButton.hide();
+
+    getoutButton = createButton('Exit to Start Screen');
+    getoutButton.position(300, 20);
+    getoutButton.mousePressed(handleExitToSelection);
+    getoutButton.hide();
 
     // Username input
     usernameInput = createInput('');
@@ -300,10 +310,6 @@ async function createNewGame() {
 
     statusMessage = `Game created! Code: ${gameID}`;
 
-    //Navigate to waiting.html
-    setTimeout(() => {
-        window.location.href = '../HTML/BbBwaiting.html';
-    }, 1500);
 }
 
 async function joinGame() {
@@ -340,7 +346,7 @@ async function joinGame() {
         if (gameData.uid1 === userID) {
             statusMessage = 'You are already in this game';
             sessionStorage.setItem('gameID', gameCode);
-            window.location.href = '../HTML/BbBwaiting.html';
+
             return;
         }
 
@@ -368,10 +374,7 @@ async function joinGame() {
 
         statusMessage = `Joined game: ${gameCode}`;
 
-        //Navigate to waiting.html
-        setTimeout(() => {
-            window.location.href = '../HTML/BbBwaiting.html';
-        }, 1500);
+
 
     } catch (error) {
         statusMessage = 'Error joining game: ' + error.message;

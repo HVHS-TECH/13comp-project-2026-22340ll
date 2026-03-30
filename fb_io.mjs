@@ -17,7 +17,8 @@ import {
     query,
     orderByChild,
     limitToLast,
-    remove
+    remove,
+    update
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
 const firebaseConfig = {
@@ -422,5 +423,6 @@ export {
     ref,
     set,
     get,
-    onValue
+    onValue,
+    update
 };

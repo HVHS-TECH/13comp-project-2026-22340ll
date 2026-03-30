@@ -34,16 +34,16 @@ function setup() {
 fb_initialise();
 /*******************************************************/
 function preload() { //Preload everyting for further purposes. This should only load once.
-    imgSpartan = loadImage('../other/Kratos_PS4.png'); // all property of Kratos go to sony and playstation
-    imgWizard = loadImage('../other/image.jpg'); // image.jpg is a placeholder
-    imgPalidin = loadImage('../other/image.jpg');
-    imgBardarian = loadImage('../other/image.jpg');
-    imgCleric = loadImage('../other/image.jpg');
+    imgSpartan = loadImage('../other/Kratos_PS4.png'); // all property of Kratos go to Sony and Playstation. Also using Kratos as the spartan just seems funny to me.
+    imgWizard = loadImage('../other/BbBWiz.png');
+    imgPaladin = loadImage('../other/BbBPal.png');
+    imgBarbarian = loadImage('../other/BbBBarb.png');
+    imgCleric = loadImage('../other/BbBCler.png');
     imgBG1 = loadImage('../other/battleback1.png'); // All backgrounds credit to Gabriel 'Nidhoggn' de Aguiar 
-    imgBG2 = loadImage('../other/battleback2.png');// (https://opengameart.org/users/nidhoggn)
+    imgBG2 = loadImage('../other/battleback2.png'); // (https://opengameart.org/users/nidhoggn)
     imgBG3 = loadImage('../other/battleback3.png');
     imgBG4 = loadImage('../other/battleback9.png');
-    imgBG5 = loadImage('../other/battleback0.png');
+    imgBG5 = loadImage('../other/battleback10.png');
 }
 
 

@@ -14,9 +14,6 @@
   <script src="https://cdn.jsdelivr.net/npm/planck-js@0.3.31/dist/planck.min.js"></script>
   <script src="https://p5play.org/v3/p5play.js"></script>
 
-  <!-- YOUR GAME FILE -->
-  <script src="../MJS/derivitive.js"></script>
-
   <link rel="stylesheet" href="../css/style.css">
 </head>
 
@@ -30,10 +27,123 @@
     </button>
   </div>
 
+  <!-- Firebase Modular SDK with importmap -->
+  <script type="importmap">
+    {
+        "imports": {
+            "firebase/app": "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js",
+            "firebase/auth": "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js",
+            "firebase/database": "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"
+        }
+    }
+  </script>
+
+  <script type="module">
+    import { initializeApp } from 'firebase/app';
+    import { getAuth, onAuthStateChanged } from 'firebase/auth';
+    import { getDatabase, ref, get, set } from 'firebase/database';
+    
+    const firebaseConfig = {
+        apiKey: "AIzaSyAWFMXdbKAkUGCzsrge1XvQzWG_FPWBXbI",
+        authDomain: "comp-2026-leon-lim.firebaseapp.com",
+        databaseURL: "https://comp-2026-leon-lim-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "comp-2026-leon-lim",
+        storageBucket: "comp-2026-leon-lim.firebasestorage.app",
+        messagingSenderId: "1092074281505",
+        appId: "1:1092074281505:web:4dc7d8eaf21fb278eea160",
+        measurementId: "G-12JTLL44XH"
+    };
+    
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const database = getDatabase(app);
+    
+    // Make Firebase available globally for your game script
+    window.firebaseApp = app;
+    window.firebaseAuth = auth;
+    window.firebaseDatabase = database;
+    window.firebaseHelpers = {
+        get, ref, set,
+        saveScore: async (gameName, score) => {
+            const user = auth.currentUser;
+            if (!user) return false;
+            
+            try {
+                const scoreData = {
+                    score: parseInt(score),
+                    timestamp: new Date().toISOString(),
+                    playerName: user.displayName || "Anonymous",
+                    uid: user.uid,
+                    email: user.email
+                };
+                
+                await set(ref(database, `gameScores/${gameName}/${user.uid}`), scoreData);
+                return true;
+            } catch (error) {
+                console.error("Failed to save score:", error);
+                return false;
+            }
+        }
+    };
+    
+    // Check authentication
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+            // Redirect to login if not authenticated
+            window.location.href = '/index.html';
+            return;
+        }
+        
+        // Check if user is registered
+        const userRef = ref(database, 'users/' + user.uid);
+        const snapshot = await get(userRef);
+        
+        if (!snapshot.exists()) {
+            window.location.href = '/register.html';
+            return;
+        }
+        
+        console.log('User authenticated:', user.displayName);
+        
+        // Dispatch event that Firebase is ready
+        window.dispatchEvent(new CustomEvent('firebase-ready', { detail: { user } }));
+    });
+    
+    // Expose userStartAudio to global scope for the button
+    window.userStartAudio = async () => {
+        try {
+            // Resume AudioContext if it exists
+            if (window.AudioContext || window.webkitAudioContext) {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') {
+                    await audioCtx.resume();
+                }
+            }
+            
+            // Call your game's audio function if it exists
+            if (typeof window.gameUserStartAudio === 'function') {
+                await window.gameUserStartAudio();
+            }
+            
+            return true;
+        } catch (error) {
+            console.error("Failed to enable audio:", error);
+            return false;
+        }
+    };
+  </script>
+
+  <!-- Load your game script as a module to access Firebase -->
+  <script type="module" src="../MJS/derivitive.js"></script>
+  
   <script>
+    // Handle audio button click
     document.getElementById('unlock-audio').addEventListener('click', async () => {
-      await userStartAudio();
-      document.getElementById('audio-prompt').style.display = 'none';
+      if (typeof window.userStartAudio === 'function') {
+        await window.userStartAudio();
+        document.getElementById('audio-prompt').style.display = 'none';
+      }
     });
   </script>
 </body>
