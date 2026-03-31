@@ -7,6 +7,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/x-icon" href="/assets/images/dtec_favicon.PNG">
   <link rel="stylesheet" href="/games/derivitive/css/lose-screen.css">
+  
+  <!-- Load Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 </head>
 
 <body style="background-color:rgb(82, 8, 66);">
@@ -25,20 +30,92 @@
     </div>
 
     <script>
+      // Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyAWFMXdbKAkUGCzsrge1XvQzWG_FPWBXbI",
+        authDomain: "comp-2026-leon-lim.firebaseapp.com",
+        databaseURL: "https://comp-2026-leon-lim-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "comp-2026-leon-lim",
+        storageBucket: "comp-2026-leon-lim.firebasestorage.app",
+        messagingSenderId: "1092074281505",
+        appId: "1:1092074281505:web:4dc7d8eaf21fb278eea160",
+        measurementId: "G-12JTLL44XH"
+      };
+      
+      // Initialize Firebase
+      const app = firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const database = firebase.database();
+      
       const urlParams = new URLSearchParams(window.location.search);
       const score = urlParams.get('score') || 0;
       document.getElementById('finalScore').textContent = `Score: ${score}`;
-      let highScore = localStorage.getItem('highScore') || 0;
+      
+      // High score from localStorage
+      let highScore = localStorage.getItem('derivitiveHighScore') || 0;
       if (parseInt(score) > parseInt(highScore)) {
         highScore = score;
-        localStorage.setItem('highScore', highScore);
+        localStorage.setItem('derivitiveHighScore', highScore);
         document.getElementById('highScore').textContent = `New High Score: ${highScore}`;
       } else {
         document.getElementById('highScore').textContent = `High Score: ${highScore}`;
       }
-      document.addEventListener('click', function () {
-        document.getElementById('end-audio').play();
-      }, { once: true });
+      
+      // Save score to Firebase
+      async function saveScoreToFirebase(finalScore) {
+        const user = auth.currentUser;
+        if (!user) {
+          console.log('No user logged in');
+          return false;
+        }
+        
+        if (finalScore <= 0) {
+          console.log('Score is 0, not saving');
+          return false;
+        }
+        
+        try {
+          const scoreData = {
+            score: parseInt(finalScore),
+            timestamp: new Date().toISOString(),
+            playerName: user.displayName || "Anonymous",
+            uid: user.uid
+          };
+          
+          // Using 'gameScore' (singular) to match your database
+          await database.ref(`gameScore/${user.uid}`).set(scoreData);
+          console.log('Score saved to Firebase:', finalScore);
+          return true;
+        } catch (error) {
+          console.error("Failed to save score:", error);
+          return false;
+        }
+      }
+      
+      // Play end sound and save score
+      let soundPlayed = false;
+      
+      document.addEventListener('click', async function() {
+        if (!soundPlayed) {
+          const audio = document.getElementById('end-audio');
+          if (audio) {
+            audio.play().catch(e => console.log('Audio play failed:', e));
+          }
+          soundPlayed = true;
+        }
+      });
+      
+      // Save score when page loads and user is authenticated
+      auth.onAuthStateChanged(async (user) => {
+        if (user && score > 0) {
+          await saveScoreToFirebase(score);
+        }
+      });
+      
+      // Also try to save immediately if user is already logged in
+      if (auth.currentUser && score > 0) {
+        saveScoreToFirebase(score);
+      }
     </script>
   </header>
 </body>

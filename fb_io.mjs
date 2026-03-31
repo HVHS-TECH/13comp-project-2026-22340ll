@@ -48,8 +48,6 @@ let audioContext;
  */
 async function fb_initialise() {
     try {
-        // Do NOT create AudioContext here — defer until user gesture.
-        // Audio will be created lazily by fb_resumeAudio() when the user interacts.
         return app;
     } catch (e) {
         console.error("Initialization error:", e);
@@ -123,7 +121,7 @@ async function fb_writeUserData(userId, name, email, additionalData = {}) {
         return true;
     } catch (error) {
         console.error("Failed to write user data:", error);
-        throw new Error("Failed to s@ve user data.");
+        throw new Error("Failed to save user data.");
     }
 }
 
@@ -172,7 +170,6 @@ async function fb_checkAdminStatus(userId) {
         return snapshot.exists();
     } catch (error) {
         console.error("Admin check error:", error);
-        // Fail safely - assume not admin if there's an error
         return false;
     }
 }
@@ -205,7 +202,6 @@ function fb_authChanged() {
             }
         } catch (error) {
             console.error('Auth state error:', error);
-            // Don't block auth flow on admin check errors
             sessionStorage.setItem('isAdmin', 'n');
         }
     });
@@ -235,11 +231,10 @@ async function fb_setAdminStatus(userId, isAdmin) {
 
 /**
  * Writes game score to database
- * @param {string} gameName - Name of the game
- * @param {number} score - Player's score
+ * @param {string} score - Player's score
  * @returns {Promise<boolean>} True if successful
  */
-async function fb_writeGameScore(gameName, score) {//Gamescores stored
+async function fb_writeGameScore(score) {
     try {
         const user = auth.currentUser;
         if (!user) throw new Error("User not authenticated");
@@ -248,11 +243,11 @@ async function fb_writeGameScore(gameName, score) {//Gamescores stored
             score: parseInt(score),
             timestamp: new Date().toISOString(),
             playerName: user.displayName || "Anonymous",
-            uid: user.uid,
-            email: user.email
+            uid: user.uid
         };
 
-        await set(ref(database, `gameScores/${gameName}/${user.uid}`), scoreData);
+        // IMPORTANT: Using 'gameScore' (singular) to match your database
+        await set(ref(database, `gameScore/${user.uid}`), scoreData);
         return true;
     } catch (error) {
         console.error("Failed to save score:", error);
@@ -262,13 +257,12 @@ async function fb_writeGameScore(gameName, score) {//Gamescores stored
 
 /**
  * Gets high scores for a game
- * @param {string} gameName - Name of the game
  * @param {number} limit - Maximum number of scores to return
  * @returns {Promise<Array>} Array of score objects
  */
-async function fb_getHighScores(gameName, limit = 10) {
+async function fb_getHighScores(limit = 10) {
     try {
-        const scoresRef = ref(database, `gameScores/${gameName}`);
+        const scoresRef = ref(database, 'gameScore');
         const snapshot = await get(query(
             scoresRef,
             orderByChild('score'),
@@ -347,20 +341,17 @@ async function fb_getAllUsers() {
  */
 async function fb_getAllGameScores() {
     try {
-        const snapshot = await get(ref(database, 'gameScores'));
+        const snapshot = await get(ref(database, 'gameScore'));
         if (!snapshot.exists()) return [];
 
         const scores = [];
-        snapshot.forEach((gameSnapshot) => {
-            gameSnapshot.forEach((userSnapshot) => {
-                scores.push({
-                    game: gameSnapshot.key,
-                    userId: userSnapshot.key,
-                    ...userSnapshot.val()
-                });
+        snapshot.forEach((userSnapshot) => {
+            scores.push({
+                userId: userSnapshot.key,
+                ...userSnapshot.val()
             });
         });
-        return scores;
+        return scores.sort((a, b) => b.score - a.score);
     } catch (error) {
         console.error("Failed to get all scores:", error);
         throw new Error("Failed to retrieve score data.");
@@ -384,20 +375,18 @@ async function fb_deleteUser(uid) {
 
 /**
  * Deletes a score from database
- * @param {string} game - Game name
  * @param {string} uid - User ID
  * @returns {Promise<boolean>} True if successful
  */
-async function fb_deleteScore(game, uid) {
+async function fb_deleteScore(uid) {
     try {
-        await remove(ref(database, `gameScores/${game}/${uid}`));
+        await remove(ref(database, `gameScore/${uid}`));
         return true;
     } catch (error) {
         console.error("Failed to delete score:", error);
         throw new Error("Failed to delete score.");
     }
 }
-
 
 export {
     fb_initialise,

@@ -1,8 +1,7 @@
-// derivitive.js - Convert to module syntax
+/*******************************************************/
 let deritive, boolet = null;
 let imgPlane, imgPlaneleft, imgPlaneright, imgBoolet, imgEngineHealth, imgJelifisch, imgBackGround1, imgBackGround2;
 let squish, corneria;
-let audioEnabled = false;
 
 let y1 = 0, y2 = 0, bgSpeed = 2, bgWidth, bgHeight = 1920;
 let lastAlienSpawnTime = 0, alienSpawnInterval = 1500, alienGroup;
@@ -10,46 +9,8 @@ let score = 0, scoreDisplay, health = 3;
 let gameStartTime;
 let currentTime = 0;
 let timerDisplay;
-
-const hasP5LoadSound = typeof window.loadSound === 'function';
-function loadGameSound(path) {
-    if (hasP5LoadSound) {
-        return loadSound(path);
-    }
-
-    const audio = new Audio(path);
-    audio.preload = 'auto';
-    audio.load();
-    return audio;
-}
-
-function soundPlay(sound, options = {}) {
-    if (!sound) return;
-    const { loop = false } = options;
-    if (typeof sound.setLoop === 'function') {
-        sound.setLoop(loop);
-    } else {
-        sound.loop = loop;
-    }
-    if (typeof sound.play === 'function') {
-        sound.play();
-    }
-}
-
-function soundIsPlaying(sound) {
-    if (!sound) return false;
-    if (typeof sound.isPlaying === 'function') return sound.isPlaying();
-    return !sound.paused && !sound.ended;
-}
-
-function soundIsLoaded(sound) {
-    if (!sound) return false;
-    if (typeof sound.isLoaded === 'function') return sound.isLoaded();
-    return sound.readyState >= 2;
-}
-
-// Export functions that need to be accessed
-window.gameUserStartAudio = userStartAudio;
+let gameActive = true;
+let scoreSaved = false;
 
 /*******************************************************/
 function preload() {
@@ -61,35 +22,10 @@ function preload() {
     imgBackGround1 = loadImage('../other/backround1.png');
     imgBackGround2 = loadImage('../other/backround2.png');
     imgJelifisch = loadImage('../other/jelifisch.gif');
-}
 
-/*******************************************************/
-async function userStartAudio() {
-    if (audioEnabled) return;
-    
-    try {
-        // Resume AudioContext
-        if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') {
-                await audioCtx.resume();
-            }
-        }
-        
-        // Load sounds using p5 if available, otherwise fallback to Audio
-        squish = loadGameSound("../other/squish.mp3");
-        corneria = loadGameSound("../other/corneria.mp3");
-        
-        audioEnabled = true;
-        console.log("Audio enabled");
-        
-        // Start background music
-        if (corneria) {
-            soundPlay(corneria, { loop: true });
-        }
-    } catch (error) {
-        console.error("Failed to enable audio:", error);
-    }
+    squish = loadSound("../other/squish.mp3");
+    corneria = loadSound("../other/corneria.mp3");
+    corneria.setLoop(true);
 }
 
 /*******************************************************/
@@ -100,7 +36,7 @@ function setup() {
     setupHealthDisplay();
     funcImg();
 
-    deritive = new Sprite(width / 2, height - 100, 150, 95);
+    deritive = new Sprite(width/2, height-100, 150, 95);
     deritive.image = imgPlane;
     deritive.rotationLock = true;
 
@@ -111,10 +47,19 @@ function setup() {
 
     gameStartTime = millis();
     setupTimerDisplay();
+    
+    // Start background music after user interaction
+    userStartAudio = function() {
+        if (corneria && !corneria.isPlaying()) {
+            corneria.play();
+        }
+    };
 }
 
 /*******************************************************/
 function draw() {
+    if (!gameActive) return;
+    
     background(0);
 
     image(imgBackGround1, 0, y1, bgWidth, bgHeight);
@@ -124,11 +69,6 @@ function draw() {
     y2 += bgSpeed;
     if (y1 > height) y1 = y2 - bgHeight;
     if (y2 > height) y2 = y1 - bgHeight;
-
-    // Start background music if audio is enabled and not playing
-    if (audioEnabled && corneria && !soundIsPlaying(corneria)) {
-        soundPlay(corneria, { loop: true });
-    }
 
     handleControls();
 
@@ -151,11 +91,11 @@ function handleControls() {
     if (kb.pressing('a')) {
         deritive.vel.x = -7;
         deritive.image = imgPlaneleft;
-    }
+    } 
     else if (kb.pressing('d')) {
         deritive.vel.x = 7;
         deritive.image = imgPlaneright;
-    }
+    } 
     else {
         deritive.image = imgPlane;
     }
@@ -184,7 +124,45 @@ function spawnAlien() {
 }
 
 /*******************************************************/
-function handleCollisions() {
+async function saveCurrentScore() {
+    if (scoreSaved) return true;
+    
+    try {
+        if (window.firebase && window.firebase.saveScore) {
+            const saved = await window.firebase.saveScore(score);
+            if (saved) {
+                scoreSaved = true;
+                console.log('Score saved successfully:', score);
+                return true;
+            }
+        }
+        return false;
+    } catch (error) {
+        console.error('Error saving score:', error);
+        return false;
+    }
+}
+
+/*******************************************************/
+async function endGame() {
+    if (!gameActive) return;
+    
+    gameActive = false;
+    
+    // Save score before redirecting
+    await saveCurrentScore();
+    
+    // Stop background music
+    if (corneria && corneria.isPlaying()) {
+        corneria.stop();
+    }
+    
+    // Redirect to lose page with score
+    window.location.href = "../HTML/lose.html?score=" + score;
+}
+
+/*******************************************************/
+async function handleCollisions() {
     if (boolet) {
         boolet.overlaps(alienGroup, (bullet, enemy) => {
             enemy.remove();
@@ -192,9 +170,8 @@ function handleCollisions() {
             boolet = null;
             score++;
             scoreDisplay.html('Score: ' + score);
-            if (audioEnabled && squish && soundIsLoaded(squish)) {
-                soundPlay(squish);
-            }
+            if (squish) squish.play();
+            console.log('Score increased to:', score); // Debug log
         });
 
         if (boolet.y < -50) {
@@ -203,20 +180,35 @@ function handleCollisions() {
         }
     }
 
-    deritive.collides(alienGroup, async (player, enemy) => {
+    deritive.collides(alienGroup, (player, enemy) => {
         enemy.remove();
         health--;
         updateHealthDisplay();
+        console.log('Health decreased to:', health); // Debug log
 
         if (health <= 0) {
-            // Save score to Firebase before redirecting
-            if (window.firebaseHelpers && window.firebaseAuth && window.firebaseAuth.currentUser) {
-                await window.firebaseHelpers.saveScore('derivitive', score);
-            }
-            window.location.href = "../HTML/lose.html?score=" + score;
+            console.log('Game Over! Final score:', score); // Debug log
+            saveAndEndGame();
         }
     });
 }
+
+async function saveAndEndGame() {
+    console.log('Saving score...');
+    
+    if (window.firebase && window.firebase.saveScore) {
+        const saved = await window.firebase.saveScore(score);
+        console.log('Score save result:', saved ? 'SUCCESS' : 'FAILED');
+    } else {
+        console.error('Firebase saveScore not available!');
+    }
+    
+    if (corneria && corneria.isPlaying()) {
+        corneria.stop();
+    }
+    
+    window.location.href = "../HTML/lose.html?score=" + score;
+}   
 
 /*******************************************************/
 function funcSetupScore() {
@@ -249,7 +241,7 @@ function updateTimerDisplay() {
 }
 
 /*******************************************************/
-function funcImg() {
+function funcImg(){
     imgPlane.resize(150, 95);
     imgPlaneleft.resize(75, 95);
     imgPlaneright.resize(75, 95);
@@ -258,4 +250,12 @@ function funcImg() {
     imgBackGround1.resize(windowWidth, bgHeight);
     imgBackGround2.resize(windowWidth, bgHeight);
     imgJelifisch.resize(50, 50);
+}
+
+/*******************************************************/
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+    bgWidth = windowWidth;
+    imgBackGround1.resize(windowWidth, bgHeight);
+    imgBackGround2.resize(windowWidth, bgHeight);
 }

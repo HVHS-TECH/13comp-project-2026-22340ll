@@ -6,7 +6,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- p5 -->
+  <!-- p5 - load first -->
   <script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/p5.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/addons/p5.sound.min.js"></script>
 
@@ -19,7 +19,7 @@
 
 <body>
   <div id="audio-prompt"
-    style="position:fixed;inset:0;display:flex;justify-content:center;align-items:center;background:rgba(0,0,0,0.85);z-index:1000;flex-direction:column;gap:20px;color:#fff;">
+    style="position:fixed;inset:0;display:flex;justify-content:center;align-items:center;background:rgba(0,0,0,0.85);z-index:1000;flex-direction:column;gap:20px;color:#fff;z-index:9999;">
     <h2>Click to enable audio and start</h2>
     <button id="unlock-audio"
       style="padding:12px 20px;font-size:16px;border-radius:6px;border:none;background:#4CAF50;color:#fff;cursor:pointer;">
@@ -27,22 +27,13 @@
     </button>
   </div>
 
-  <!-- Firebase Modular SDK with importmap -->
-  <script type="importmap">
-    {
-        "imports": {
-            "firebase/app": "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js",
-            "firebase/auth": "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js",
-            "firebase/database": "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"
-        }
-    }
-  </script>
-
-  <script type="module">
-    import { initializeApp } from 'firebase/app';
-    import { getAuth, onAuthStateChanged } from 'firebase/auth';
-    import { getDatabase, ref, get, set } from 'firebase/database';
-    
+  <!-- Load Firebase (use compat version to avoid conflicts) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  
+  <script>
+    // Initialize Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyAWFMXdbKAkUGCzsrge1XvQzWG_FPWBXbI",
         authDomain: "comp-2026-leon-lim.firebaseapp.com",
@@ -55,49 +46,68 @@
     };
     
     // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const database = getDatabase(app);
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const database = firebase.database();
     
-    // Make Firebase available globally for your game script
-    window.firebaseApp = app;
-    window.firebaseAuth = auth;
-    window.firebaseDatabase = database;
-    window.firebaseHelpers = {
-        get, ref, set,
-        saveScore: async (gameName, score) => {
+    // Make Firebase available globally
+    window.firebase = {
+        auth: auth,
+        database: database,
+        saveScore: async (score) => {
             const user = auth.currentUser;
-            if (!user) return false;
+            if (!user) {
+                console.log('No user logged in');
+                return false;
+            }
             
             try {
+                // TRY BOTH POSSIBLE PATHS TO SEE WHICH ONE WORKS
                 const scoreData = {
                     score: parseInt(score),
                     timestamp: new Date().toISOString(),
                     playerName: user.displayName || "Anonymous",
-                    uid: user.uid,
-                    email: user.email
+                    uid: user.uid
                 };
                 
-                await set(ref(database, `gameScores/${gameName}/${user.uid}`), scoreData);
+                // Option 1: Direct under gameScore (matches your screenshot)
+                await database.ref(`gameScore/${user.uid}`).set(scoreData);
+                console.log('Score saved to gameScore/', user.uid);
+                
+                // ALSO try saving to Derivative_ if that's where scores go
+                await database.ref(`gameScore/Derivative_/${user.uid}`).set(scoreData);
+                console.log('Score also saved to gameScore/Derivative_/', user.uid);
+                
                 return true;
             } catch (error) {
                 console.error("Failed to save score:", error);
+                return false;
+            }
+        },
+        // Function to test Firebase connection
+        testConnection: async () => {
+            try {
+                const testRef = database.ref('test_connection');
+                await testRef.set({ timestamp: Date.now() });
+                console.log('Firebase write works!');
+                await testRef.remove();
+                return true;
+            } catch (error) {
+                console.error('Firebase write failed:', error);
                 return false;
             }
         }
     };
     
     // Check authentication
-    onAuthStateChanged(auth, async (user) => {
+    auth.onAuthStateChanged(async (user) => {
         if (!user) {
-            // Redirect to login if not authenticated
             window.location.href = '/index.html';
             return;
         }
         
         // Check if user is registered
-        const userRef = ref(database, 'users/' + user.uid);
-        const snapshot = await get(userRef);
+        const snapshot = await database.ref('users/' + user.uid).once('value');
         
         if (!snapshot.exists()) {
             window.location.href = '/register.html';
@@ -106,46 +116,30 @@
         
         console.log('User authenticated:', user.displayName);
         
+        // Test Firebase connection
+        const canWrite = await window.firebase.testConnection();
+        console.log('Firebase write test:', canWrite ? 'SUCCESS' : 'FAILED');
+        
         // Dispatch event that Firebase is ready
         window.dispatchEvent(new CustomEvent('firebase-ready', { detail: { user } }));
     });
     
-    // Expose userStartAudio to global scope for the button
-    window.userStartAudio = async () => {
-        try {
-            // Resume AudioContext if it exists
-            if (window.AudioContext || window.webkitAudioContext) {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioCtx.state === 'suspended') {
-                    await audioCtx.resume();
-                }
-            }
-            
-            // Call your game's audio function if it exists
-            if (typeof window.gameUserStartAudio === 'function') {
-                await window.gameUserStartAudio();
-            }
-            
-            return true;
-        } catch (error) {
-            console.error("Failed to enable audio:", error);
-            return false;
-        }
-    };
-  </script>
-
-  <!-- Load your game script as a module to access Firebase -->
-  <script type="module" src="../MJS/derivitive.js"></script>
-  
-  <script>
     // Handle audio button click
     document.getElementById('unlock-audio').addEventListener('click', async () => {
-      if (typeof window.userStartAudio === 'function') {
-        await window.userStartAudio();
-        document.getElementById('audio-prompt').style.display = 'none';
-      }
+        try {
+            if (typeof window.userStartAudio === 'function') {
+                await window.userStartAudio();
+            }
+            document.getElementById('audio-prompt').style.display = 'none';
+        } catch (error) {
+            console.error("Failed to enable audio:", error);
+            document.getElementById('audio-prompt').style.display = 'none';
+        }
     });
-  </script>
+</script>
+  
+  <!-- Your game script -->
+  <script src="../MJS/derivitive.js"></script>
 </body>
 
 </html>
