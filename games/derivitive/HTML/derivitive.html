@@ -70,10 +70,7 @@
                     uid: user.uid
                 };
                 
-                // Option 1: Direct under gameScore (matches your screenshot)
-                await database.ref(`gameScore/${user.uid}`).set(scoreData);
-                console.log('Score saved to gameScore/', user.uid);
-                
+ 
                 // ALSO try saving to Derivative_ if that's where scores go
                 await database.ref(`gameScore/Derivative_/${user.uid}`).set(scoreData);
                 console.log('Score also saved to gameScore/Derivative_/', user.uid);
