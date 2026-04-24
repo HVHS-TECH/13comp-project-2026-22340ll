@@ -6,8 +6,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Favicon (root-based path for GitHub Pages) -->
-  <link rel="icon" type="image/x-icon" href="/assets/images/dtec_favicon.PNG">
+  <!-- Favicon (repo root) -->
+  <link rel="icon" type="image/x-icon" href="/13comp-project-2026-22340ll/assets/images/dtec_favicon.PNG">
 
   <!-- Stylesheets -->
   <link rel="stylesheet" href="../css/style.css">
@@ -27,19 +27,21 @@
 
   <header>
     <div class="vertical-container">
+
+      <!-- Images (correct relative path) -->
       <img src="../other/spacebutton.png" width="115" height="100" alt="Space Button">
 
-      <!-- FIXED LINK -->
-      <a herf="derivitive.html"></a>
-      <button onclick class="fight-button">
+      <!-- WORKING BUTTON -->
+      <a href="derivitive.html" class="fight-button">
         FIGHT!
-      </button>
+      </a>
 
       <img src="../other/arror.png" width="100" height="100" alt="Arrow">
+
     </div>
   </header>
 
-  <!-- Optional Sign-In Script (SAFE version) -->
+  <!-- SAFE Script (won't crash if button doesn't exist) -->
   <script>
     const signInBtn = document.getElementById('signInButton');
 
