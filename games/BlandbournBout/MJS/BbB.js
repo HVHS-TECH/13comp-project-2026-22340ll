@@ -44,6 +44,16 @@ function preload() { //Preload everyting for further purposes. This should only 
     imgBG3 = loadImage('../other/battleback3.png');
     imgBG4 = loadImage('../other/battleback9.png');
     imgBG5 = loadImage('../other/battleback10.png');
+
+    
+    classImages = { // Map classes to images
+        'Spartan': imgSpartan,
+        'Wizard': imgWizard,
+        'Paladin': imgPaladin,
+        'Barbarian': imgBarbarian,
+        'Cleric': imgCleric,
+        'default': imgPlaceholder
+    };
 }
 
 

@@ -7,8 +7,7 @@
 /*************************************************************/
 // -Setup
 let userID, uidClass, gameID, gameNumber; // Making these exist
-let player1, player2, gameTurn; //(So far, these dont do anything and will break 
-// smthn if i remove the slash now)
+let player1, player2, gameTurn; 
 let playerClass = '';
 let oppClass = '';
 let playerReady = false;
@@ -22,7 +21,7 @@ let imgPlaceholder, imgSpartan, imgWizard, imgPaladin, imgBarbarian, imgCleric, 
 let loginButton, LogoutButton, getoutButton, createGameButton, joinGameButton, gameCodeInput, refreshButton, usernameInput;
 // Declare other variables
 let statusMessage, isAuthenticated, isAdmin;
-let currentPlayer, opponentPlayer, gameInterval;
+let currentPlayer, opponentPlayer, gameInterval, lobbyListener;
 
 console.log("Authenticate Please");
 
@@ -82,7 +81,7 @@ function preload() { //Preload everyting for further purposes.
 function startLobbyListener() {
     //Listen to gameScore/BbB path
     const gamesRef = ref(database, 'gameScore/BbB');
-    onValue(gamesRef, (snapshot) => {
+    lobbyListener = onValue(gamesRef, (snapshot) => {
         if (snapshot.exists()) {
             availableGames = [];
             snapshot.forEach((childSnapshot) => {
@@ -101,9 +100,9 @@ function startLobbyListener() {
 }
 
 function startGameListener(gameId) {
-    const gameRef = ref(database, `gameScore/BbB/${gameId}`);
+    const gameRef = ref(database, `gameScore/BbB/Wait/${gameId}`);
     if (gameInterval) {
-        // Clean up
+        gameInterval(); // Clean up previous listener
     }
     gameInterval = onValue(gameRef, (snapshot) => {
         if (!snapshot.exists()) {
@@ -288,7 +287,7 @@ async function createNewGame() {
     playerClass = randomClass;
 
     // Create game in Firebase - MATCH YOUR STRUCTURE
-    const gameRef = ref(database, `gameScore/BbB/${gameID}`);
+    const gameRef = ref(database, `gameScore/BbB/Wait/${gameID}`);
     await set(gameRef, {
         gameID: gameID,
         uid1: userID,
@@ -357,7 +356,7 @@ async function joinGame() {
         const randomClass = classes[Math.floor(Math.random() * classes.length)];
 
         // Add player to game
-        await update(ref(database, `gameScore/BbB/${gameCode}`), {
+        await update(ref(database, `gameScore/BbB/Wait/${gameCode}`), {
             uid2: userID,
             Wait: username
         });
@@ -371,7 +370,6 @@ async function joinGame() {
         sessionStorage.setItem('gameID', gameCode);
         sessionStorage.setItem('playerClass', randomClass);
         sessionStorage.setItem('isHost', 'false');
-
         statusMessage = `Joined game: ${gameCode}`;
 
 
@@ -386,11 +384,11 @@ async function joinGame() {
 async function assignRandomClasses(gameId, playerIds) {
     const classes = ['Barbarian', 'Cleric', 'Wizard', 'Paladin', 'Spartan'];
 
-    const gameRef = ref(database, `BbB/games/${gameId}/players`);
+    const gameRef = ref(database, `gameScore/BbB/Wait/${gameId}/players`);
 
     for (let i = 0; i < playerIds.length; i++) {
         const randomClass = classes[Math.floor(Math.random() * classes.length)];
-        await set(ref(database, `BbB/games/${gameId}/players/${playerIds[i]}/class`), randomClass);
+        await set(ref(database, `gameScore/BbB/Wait/${gameId}/players/${playerIds[i]}/class`), randomClass);
     }
 }
 
@@ -398,13 +396,13 @@ async function toggleReady() {
     if (!gameID || !userID) return;
     // Check if player is in the game
     const newReadyState = !playerReady;
-    await set(ref(database, `BbB/games/${gameID}/players/${userID}/ready`), newReadyState);
+    await set(ref(database, `gameScore/BbB/Wait/${gameID}/players/${userID}/ready`), newReadyState);
 }
 
 async function startGame(gameId, gameData) {
     // Set game to active
-    await set(ref(database, `BbB/games/${gameId}/gameOn`), true);
-    await set(ref(database, `BbB/games/${gameId}/status`), 'active');
+    await set(ref(database, `gameScore/BbB/Wait/${gameId}/gameOn`), true);
+    await set(ref(database, `gameScore/BbB/Wait/${gameId}/status`), 'active');
     statusMessage = 'Game starting soon!';
 }
 
@@ -486,7 +484,7 @@ function drawGameLobby() {
         fill(255);
         textSize(18);
         textAlign(CENTER);
-        text('Ready Up', width / 2, 475);
+        text('Ready Up', width / 2, 450);
         if (mouseIsPressed && mouseX > width / 2 - 60 && mouseX < width / 2 + 60 && mouseY > 450 && mouseY < 490) {
             toggleReady();
         }
@@ -568,9 +566,11 @@ function drawAvailableGames() {
 
 // Clean up Firebase listeners when leaving the page
 function windowWillUnload() {
+    if (lobbyListener) {
+        lobbyListener(); // Clean up lobby listener
+    }
     if (gameInterval) {
-        // Clean up Firebase listener
-        // off() would be called here
+        gameInterval(); // Clean up game listener
     }
 }
 
@@ -578,3 +578,6 @@ function windowWillUnload() {
 window.setup = setup;
 window.preload = preload;
 window.draw = draw;
+
+// Add event listener for cleanup on page unload
+window.addEventListener('beforeunload', windowWillUnload);
