@@ -97,7 +97,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const isAdmin = sessionStorage.getItem('isAdmin') === 'y';
   if (!isAdmin) {
     alert("Admin access required");
-    window.location.href = "/"; // Redirect to home page
+    window.location.href = ""; // Redirect to home page
     return;
   }
 
