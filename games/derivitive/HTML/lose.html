@@ -5,10 +5,13 @@
   <title>Lost</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/x-icon" href="assets/images/dtec_favicon.PNG">
-  <link rel="stylesheet" href="games/derivitive/css/lose-screen.css">
+
+
+  <link rel="icon" type="image/x-icon" href="13comp-project-2026-22340ll/assets/images/dtec_favicon.PNG">
+
+  <link rel="stylesheet" href="13comp-project-2026-22340ll/games/derivitive/css/lose-screen.css">
   
-  <!-- Load Firebase -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
@@ -18,19 +21,25 @@
 
   <header>
     <audio id="end-audio">
-      <source src="games/derivitive/other/end.mp3" type="audio/mpeg">
+
+      <source src="13comp-project-2026-22340ll/games/derivitive/other/end.mp3" type="audio/mpeg">
     </audio>
 
     <div class="game-over-container">
       <div class="high-score" id="highScore"></div>
       <div class="final-score" id="finalScore"></div>
       <div class="game-over-text">Game Over</div>
-      <button onclick="location.href='games/derivitive/HTML/derivitive.html'">Try again</button>
-      <button onclick="location.href='startscreen.html'">Back to Start Screen</button>
+
+      <button onclick="location.href='games/derivitive/HTML/derivitive.html'">
+        Try again
+      </button>
+      <button onclick="window.location.href='startscreen.html'">
+        Back to Start Screen
+      </button>
     </div>
 
     <script>
-      // Firebase configuration
+      // Firebase config
       const firebaseConfig = {
         apiKey: "AIzaSyAWFMXdbKAkUGCzsrge1XvQzWG_FPWBXbI",
         authDomain: "comp-2026-leon-lim.firebaseapp.com",
@@ -42,17 +51,18 @@
         measurementId: "G-12JTLL44XH"
       };
       
-      // Initialize Firebase
       const app = firebase.initializeApp(firebaseConfig);
       const auth = firebase.auth();
       const database = firebase.database();
       
+      // Get score from URL
       const urlParams = new URLSearchParams(window.location.search);
       const score = urlParams.get('score') || 0;
       document.getElementById('finalScore').textContent = `Score: ${score}`;
       
-      // High score from localStorage
+      // Local high score
       let highScore = localStorage.getItem('derivitiveHighScore') || 0;
+
       if (parseInt(score) > parseInt(highScore)) {
         highScore = score;
         localStorage.setItem('derivitiveHighScore', highScore);
@@ -64,11 +74,12 @@
       // Save score to Firebase
       async function saveScoreToFirebase(finalScore) {
         const user = auth.currentUser;
+
         if (!user) {
           console.log('No user logged in');
           return false;
         }
-        
+
         if (finalScore <= 0) {
           console.log('Score is 0, not saving');
           return false;
@@ -82,37 +93,37 @@
             uid: user.uid
           };
           
-          // Using 'gameScore' (singular) to match your database
-          await database.ref(`gameScore/${user.uid}`).set(scoreData);
-          console.log('Score saved to Firebase:', finalScore);
+          await database.ref(`gameScore/Derivative_/${user.uid}`).push(scoreData);
+          console.log('Score saved:', finalScore);
           return true;
+
         } catch (error) {
-          console.error("Failed to save score:", error);
+          console.error("Save failed:", error);
           return false;
         }
       }
       
-      // Play end sound and save score
+      // Play sound once
       let soundPlayed = false;
-      
-      document.addEventListener('click', async function() {
+
+      document.addEventListener('click', function () {
         if (!soundPlayed) {
           const audio = document.getElementById('end-audio');
           if (audio) {
-            audio.play().catch(e => console.log('Audio play failed:', e));
+            audio.play().catch(e => console.log('Audio failed:', e));
           }
           soundPlayed = true;
         }
       });
       
-      // Save score when page loads and user is authenticated
+      // Save when auth ready
       auth.onAuthStateChanged(async (user) => {
         if (user && score > 0) {
           await saveScoreToFirebase(score);
         }
       });
       
-      // Also try to save immediately if user is already logged in
+      // Backup attempt
       if (auth.currentUser && score > 0) {
         saveScoreToFirebase(score);
       }
