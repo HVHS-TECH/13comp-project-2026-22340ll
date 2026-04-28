@@ -99,13 +99,6 @@ async function checkAdminStatus(user) {
             return false;
         }
 
-        // Verify the exact UID from your screenshot
-        const adminUID = 'ae7WXXIleS9cEpjw8BixZ8bpEndz2';
-        if (user.uid === adminUID) {
-            console.log('Hardcoded admin UID match');
-            return true;
-        }
-
         // Fallback to database check
         console.log('Checking admin status for UID:', user.uid);
         const snapshot = await database.ref('uidAdmin/' + user.uid).once('value');
