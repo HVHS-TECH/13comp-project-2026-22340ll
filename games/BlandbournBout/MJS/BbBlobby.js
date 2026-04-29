@@ -7,7 +7,7 @@
 /*************************************************************/
 // -Setup
 let userID, uidClass, gameID, gameNumber; // Making these exist
-let player1, player2, gameTurn; 
+let player1, player2, gameTurn;
 let playerClass = '';
 let oppClass = '';
 let playerReady = false;
@@ -19,6 +19,7 @@ let availableGames = [];
 let imgPlaceholder, imgSpartan, imgWizard, imgPaladin, imgBarbarian, imgCleric, classImages;
 // Declare UI variables
 let loginButton, LogoutButton, getoutButton, createGameButton, joinGameButton, gameCodeInput, refreshButton, usernameInput;
+let cancelGameButton, changeClassButton;
 // Declare other variables
 let statusMessage, isAuthenticated, isAdmin;
 let currentPlayer, opponentPlayer, gameInterval, lobbyListener;
@@ -138,6 +139,12 @@ function updateUIForAuth(loggedIn) {
         gameCodeInput.show();
         refreshButton.show();
 
+        // Show cancel/change buttons if in a game
+        if (gameID) {
+            cancelGameButton.show();
+            changeClassButton.show();
+        }
+
         // Set username if available
         if (auth.currentUser) {
             usernameInput.value(auth.currentUser.displayName || '');
@@ -151,6 +158,8 @@ function updateUIForAuth(loggedIn) {
         usernameInput.hide();
         gameCodeInput.hide();
         refreshButton.hide();
+        cancelGameButton.hide();
+        changeClassButton.hide();
     }
 }
 
@@ -173,7 +182,7 @@ async function handleLogout() { //Viceversa, but with logout
 }
 
 function handleExitToSelection() {
-    window.location.href = '/startscreen.html';
+    window.location.href = '../../startscreen.html';
 }
 
 function setupUI() {
@@ -218,6 +227,18 @@ function setupUI() {
     refreshButton.position(280, 70);
     refreshButton.mousePressed(refreshAvailableGames);
     refreshButton.hide();
+
+    // Cancel game button
+    cancelGameButton = createButton('Cancel/Leave Game');
+    cancelGameButton.position(20, 190);
+    cancelGameButton.mousePressed(cancelGame);
+    cancelGameButton.hide();
+
+    // Change class button
+    changeClassButton = createButton('Change Class');
+    changeClassButton.position(180, 190);
+    changeClassButton.mousePressed(changeClass);
+    changeClassButton.hide();
 }
 
 // Fetch available games from the database and update availableGames array
@@ -307,6 +328,10 @@ async function createNewGame() {
     sessionStorage.setItem('playerClass', randomClass);
     sessionStorage.setItem('isHost', 'true');
 
+    // Show cancel and change class buttons
+    cancelGameButton.show();
+    changeClassButton.show();
+
     statusMessage = `Game created! Code: ${gameID}`;
 
 }
@@ -370,6 +395,11 @@ async function joinGame() {
         sessionStorage.setItem('gameID', gameCode);
         sessionStorage.setItem('playerClass', randomClass);
         sessionStorage.setItem('isHost', 'false');
+
+        // Show cancel and change class buttons
+        cancelGameButton.show();
+        changeClassButton.show();
+
         statusMessage = `Joined game: ${gameCode}`;
 
 
@@ -426,12 +456,109 @@ function draw() {
     }
 }
 
-function drawLoginPrompt() {
-    fill(100);
-    textSize(20);
-    textAlign(CENTER);
-    text('Please login to continue. Seriously. do it.', width / 2, height / 2);
+async function cancelGame() {
+    if (!gameID || !userID) {
+        statusMessage = 'You are not in a game';
+        return;
+    }
+
+    try {
+        // Get current game data
+        const gameRef = ref(database, `gameScore/BbB/Wait/${gameID}`);
+        const snapshot = await get(gameRef);
+
+        if (!snapshot.exists()) {
+            statusMessage = 'Game no longer exists';
+            clearGameState();
+            return;
+        }
+
+        const gameData = snapshot.val();
+
+        // Check if player is host (uid1) or player 2
+        if (gameData.uid1 === userID) {
+            // Host is leaving, delete the entire game
+            await set(gameRef, null);
+            statusMessage = 'Game cancelled';
+        } else if (gameData.uid2 === userID) {
+            // Joiner is leaving, just remove uid2
+            await update(gameRef, {
+                uid2: '',
+                Wait: ''
+            });
+            statusMessage = 'Left the game';
+        }
+
+        // Clear user's game state
+        await set(ref(database, `users/${userID}/currentGame`), null);
+        await set(ref(database, `users/${userID}/currentClass`), null);
+
+        clearGameState();
+    } catch (error) {
+        statusMessage = 'Error cancelling game: ' + error.message;
+    }
 }
+
+function clearGameState() {
+    gameID = null;
+    playerClass = '';
+    oppClass = '';
+    playerReady = false;
+    oppReady = false;
+    waitingForOpponent = false;
+    sessionStorage.removeItem('gameID');
+    sessionStorage.removeItem('playerClass');
+    sessionStorage.removeItem('isHost');
+    cancelGameButton.hide();
+    changeClassButton.hide();
+}
+
+async function changeClass() {
+    if (!gameID || !userID) {
+        statusMessage = 'You are not in a game';
+        return;
+    }
+
+    const classes = ['Barbarian', 'Cleric', 'Wizard', 'Paladin', 'Spartan'];
+    const currentIndex = classes.indexOf(playerClass);
+    const newIndex = (currentIndex + 1) % classes.length;
+    const newClass = classes[newIndex];
+
+    try {
+        // Update class in game
+        const gameRef = ref(database, `gameScore/BbB/Wait/${gameID}`);
+        const snapshot = await get(gameRef);
+
+        if (!snapshot.exists()) {
+            statusMessage = 'Game no longer exists';
+            clearGameState();
+            return;
+        }
+
+        const gameData = snapshot.val();
+
+        // Update the correct player's class
+        if (gameData.uid1 === userID) {
+            await update(gameRef, { class1: newClass });
+        } else if (gameData.uid2 === userID) {
+            await update(gameRef, { class2: newClass });
+        }
+
+        // Update user's class in users node
+        await set(ref(database, `users/${userID}/currentClass`), newClass);
+
+        playerClass = newClass;
+        sessionStorage.setItem('playerClass', newClass);
+        statusMessage = `Class changed to ${newClass}`;
+    } catch (error) {
+        statusMessage = 'Error changing class: ' + error.message;
+    }
+}
+fill(100);
+textSize(20);
+textAlign(CENTER);
+text('Please login to continue. Seriously. do it.', width / 2, height / 2);
+
 
 function drawLobby() {
     // Draw current game info if in a game
