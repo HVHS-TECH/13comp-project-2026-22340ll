@@ -182,7 +182,7 @@ async function handleLogout() { //Viceversa, but with logout
 }
 
 function handleExitToSelection() {
-    window.location.href = '../../startscreen.html';
+    window.location.href = '../../../startscreen.html';
 }
 
 function setupUI() {
@@ -554,10 +554,13 @@ async function changeClass() {
         statusMessage = 'Error changing class: ' + error.message;
     }
 }
-fill(100);
-textSize(20);
-textAlign(CENTER);
-text('Please login to continue. Seriously. do it.', width / 2, height / 2);
+
+function drawLoginPrompt() {
+    fill(100);
+    textSize(20);
+    textAlign(CENTER);
+    text('Please login to continue. Seriously. do it.', width / 2, height / 2);
+}
 
 
 function drawLobby() {
