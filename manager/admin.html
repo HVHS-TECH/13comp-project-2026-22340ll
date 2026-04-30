@@ -18,6 +18,17 @@
 
   <!-- Your JS files -->
   <script type="module" src="ad_manager.mjs"></script>
+
+  <!-- Load user profile picture -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const photoURL = sessionStorage.getItem('userPhotoURL');
+      const imgElement = document.getElementById('img_photoURL');
+      if (photoURL && imgElement) {
+        imgElement.src = photoURL;
+      }
+    });
+  </script>
 </head>
 
 <body class="w3-grey">

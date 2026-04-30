@@ -183,6 +183,7 @@ function fb_authChanged() {
             if (user) {
                 console.log('User signed in:', user.uid);
                 sessionStorage.setItem('userEmail', user.email || '');
+                sessionStorage.setItem('userPhotoURL', user.photoURL || '');
 
                 try {
                     const isAdmin = await fb_checkAdminStatus(user.uid);
