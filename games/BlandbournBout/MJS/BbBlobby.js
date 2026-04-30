@@ -19,7 +19,7 @@ let availableGames = [];
 let imgPlaceholder, imgSpartan, imgWizard, imgPaladin, imgBarbarian, imgCleric, classImages;
 // Declare UI variables
 let loginButton, LogoutButton, getoutButton, createGameButton, joinGameButton, gameCodeInput, refreshButton, usernameInput;
-let cancelGameButton, changeClassButton;
+let gameActionButton;
 // Declare other variables
 let statusMessage, isAuthenticated, isAdmin;
 let currentPlayer, opponentPlayer, gameInterval, lobbyListener;
@@ -139,10 +139,9 @@ function updateUIForAuth(loggedIn) {
         gameCodeInput.show();
         refreshButton.show();
 
-        // Show cancel/change buttons if in a game
+        // Show game action button if in a game
         if (gameID) {
-            cancelGameButton.show();
-            changeClassButton.show();
+            gameActionButton.show();
         }
 
         // Set username if available
@@ -158,8 +157,7 @@ function updateUIForAuth(loggedIn) {
         usernameInput.hide();
         gameCodeInput.hide();
         refreshButton.hide();
-        cancelGameButton.hide();
-        changeClassButton.hide();
+        gameActionButton.hide();
     }
 }
 
@@ -228,17 +226,11 @@ function setupUI() {
     refreshButton.mousePressed(refreshAvailableGames);
     refreshButton.hide();
 
-    // Cancel game button
-    cancelGameButton = createButton('Cancel/Leave Game');
-    cancelGameButton.position(20, 190);
-    cancelGameButton.mousePressed(cancelGame);
-    cancelGameButton.hide();
-
-    // Change class button
-    changeClassButton = createButton('Change Class');
-    changeClassButton.position(180, 190);
-    changeClassButton.mousePressed(changeClass);
-    changeClassButton.hide();
+    // Combined Cancel/Leave Game and Change Class button
+    gameActionButton = createButton('Game Actions ▾');
+    gameActionButton.position(20, 190);
+    gameActionButton.mousePressed(showGameActionsMenu);
+    gameActionButton.hide();
 }
 
 // Fetch available games from the database and update availableGames array
@@ -328,9 +320,8 @@ async function createNewGame() {
     sessionStorage.setItem('playerClass', randomClass);
     sessionStorage.setItem('isHost', 'true');
 
-    // Show cancel and change class buttons
-    cancelGameButton.show();
-    changeClassButton.show();
+    // Show game action button
+    gameActionButton.show();
 
     statusMessage = `Game created! Code: ${gameID}`;
 
@@ -396,9 +387,8 @@ async function joinGame() {
         sessionStorage.setItem('playerClass', randomClass);
         sessionStorage.setItem('isHost', 'false');
 
-        // Show cancel and change class buttons
-        cancelGameButton.show();
-        changeClassButton.show();
+        // Show game action button
+        gameActionButton.show();
 
         statusMessage = `Joined game: ${gameCode}`;
 
@@ -509,8 +499,7 @@ function clearGameState() {
     sessionStorage.removeItem('gameID');
     sessionStorage.removeItem('playerClass');
     sessionStorage.removeItem('isHost');
-    cancelGameButton.hide();
-    changeClassButton.hide();
+    gameActionButton.hide();
 }
 
 async function changeClass() {
@@ -523,6 +512,42 @@ async function changeClass() {
     const currentIndex = classes.indexOf(playerClass);
     const newIndex = (currentIndex + 1) % classes.length;
     const newClass = classes[newIndex];
+
+    // Use the new changeClassTo function
+    await changeClassTo(newClass);
+}
+
+// Show game actions dropdown menu
+function showGameActionsMenu() {
+    if (!gameID || !userID) {
+        statusMessage = 'You are not in a game';
+        return;
+    }
+
+    // Create a simple dropdown using createSelect
+    const menu = createSelect();
+    menu.position(20, 220);
+    menu.option('Select Action...', '');
+    menu.option('Change Class', 'change');
+    menu.option('Leave Game', 'leave');
+    menu.changed(() => {
+        const action = menu.value();
+        if (action === 'change') {
+            changeClass();
+        } else if (action === 'leave') {
+            cancelGame();
+        }
+        // Remove the menu after selection
+        setTimeout(() => menu.remove(), 100);
+    });
+}
+
+// Helper function to change class directly
+async function changeClassTo(newClass) {
+    if (!gameID || !userID) {
+        statusMessage = 'You are not in a game';
+        return;
+    }
 
     try {
         // Update class in game
