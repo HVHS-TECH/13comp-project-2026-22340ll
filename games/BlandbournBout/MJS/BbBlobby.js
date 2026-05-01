@@ -299,7 +299,7 @@ async function createNewGame() {
     const randomClass = classes[Math.floor(Math.random() * classes.length)];
     playerClass = randomClass;
 
-    // Create game in Firebase - MATCH YOUR STRUCTURE
+    // Create game in Firebase
     const gameRef = ref(database, `gameScore/BbB/Wait/${gameID}`);
     await set(gameRef, {
         gameID: gameID,
@@ -341,7 +341,7 @@ async function joinGame() {
 
     try {
         // Check if game exists
-        const gameRef = ref(database, `gameScore/BbB/${gameCode}`);
+        const gameRef = ref(database, `gameScore/BbB/Wait/${gameCode}`);
         const gameSnapshot = await get(gameRef);
 
         if (!gameSnapshot.exists()) {
