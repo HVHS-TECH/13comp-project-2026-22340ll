@@ -226,10 +226,10 @@ function setupUI() {
     refreshButton.mousePressed(refreshAvailableGames);
     refreshButton.hide();
 
-    // Combined Cancel/Leave Game and Change Class button
-    gameActionButton = createButton('Game Actions ▾');
+    // Single Leave & Change Class button
+    gameActionButton = createButton('Leave & Change Class');
     gameActionButton.position(20, 190);
-    gameActionButton.mousePressed(showGameActionsMenu);
+    gameActionButton.mousePressed(handleLeaveAndChangeClass);
     gameActionButton.hide();
 }
 
@@ -517,31 +517,6 @@ async function changeClass() {
     await changeClassTo(newClass);
 }
 
-// Show game actions dropdown menu
-function showGameActionsMenu() {
-    if (!gameID || !userID) {
-        statusMessage = 'You are not in a game';
-        return;
-    }
-
-    // Create a simple dropdown using createSelect
-    const menu = createSelect();
-    menu.position(20, 220);
-    menu.option('Select Action...', '');
-    menu.option('Change Class', 'change');
-    menu.option('Leave Game', 'leave');
-    menu.changed(() => {
-        const action = menu.value();
-        if (action === 'change') {
-            changeClass();
-        } else if (action === 'leave') {
-            cancelGame();
-        }
-        // Remove the menu after selection
-        setTimeout(() => menu.remove(), 100);
-    });
-}
-
 // Helper function to change class directly
 async function changeClassTo(newClass) {
     if (!gameID || !userID) {
@@ -577,6 +552,65 @@ async function changeClassTo(newClass) {
         statusMessage = `Class changed to ${newClass}`;
     } catch (error) {
         statusMessage = 'Error changing class: ' + error.message;
+    }
+}
+
+// Combined leave lobby and change class function
+async function handleLeaveAndChangeClass() {
+    if (!gameID || !userID) {
+        statusMessage = 'You are not in a game';
+        return;
+    }
+
+    try {
+        // Get current game data
+        const gameRef = ref(database, `gameScore/BbB/Wait/${gameID}`);
+        const snapshot = await get(gameRef);
+
+        if (!snapshot.exists()) {
+            statusMessage = 'Game no longer exists';
+            clearGameState();
+            return;
+        }
+
+        const gameData = snapshot.val();
+
+        // First, change to a new random class
+        const classes = ['Barbarian', 'Cleric', 'Wizard', 'Paladin', 'Spartan'];
+        const currentIndex = classes.indexOf(playerClass);
+        const newIndex = (currentIndex + 1) % classes.length;
+        const newClass = classes[newIndex];
+
+        // Update the class in the database
+        if (gameData.uid1 === userID) {
+            await update(gameRef, { class1: newClass });
+        } else if (gameData.uid2 === userID) {
+            await update(gameRef, { class2: newClass });
+        }
+        await set(ref(database, `users/${userID}/currentClass`), newClass);
+        playerClass = newClass;
+        sessionStorage.setItem('playerClass', newClass);
+
+        // Then leave the game
+        if (gameData.uid1 === userID) {
+            // Host is leaving, delete the entire game
+            await set(gameRef, null);
+            statusMessage = 'Game cancelled';
+        } else if (gameData.uid2 === userID) {
+            // Joiner is leaving, just remove uid2
+            await update(gameRef, {
+                uid2: '',
+                Wait: ''
+            });
+            statusMessage = 'Left the game';
+        }
+
+        // Clear user's game state
+        await set(ref(database, `users/${userID}/currentGame`), null);
+
+        clearGameState();
+    } catch (error) {
+        statusMessage = 'Error: ' + error.message;
     }
 }
 
