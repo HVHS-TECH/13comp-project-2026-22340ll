@@ -18,7 +18,7 @@ let availableGames = [];
 // Declare image variables
 let imgPlaceholder, imgSpartan, imgWizard, imgPaladin, imgBarbarian, imgCleric, classImages;
 // Declare UI variables
-let loginButton, LogoutButton, getoutButton, createGameButton, joinGameButton, gameCodeInput, refreshButton, usernameInput;
+let loginButton, getoutButton, createGameButton, joinGameButton, gameCodeInput, refreshButton, usernameInput;
 let gameActionButton;
 // Declare other variables
 let statusMessage, isAuthenticated, isAdmin;
@@ -131,7 +131,6 @@ function startGameListener(gameId) {
 function updateUIForAuth(loggedIn) {
     if (loggedIn) {
         loginButton.hide();
-        LogoutButton.show();
         getoutButton.show();
         createGameButton.show();
         joinGameButton.show();
@@ -150,7 +149,6 @@ function updateUIForAuth(loggedIn) {
         }
     } else {
         loginButton.show();
-        LogoutButton.hide();
         getoutButton.hide();
         createGameButton.hide();
         joinGameButton.hide();
@@ -170,15 +168,6 @@ async function handleLogin() { //Check weather sombody has logged in or not
     }
 }
 
-async function handleLogout() { //Viceversa, but with logout
-    try {
-        await fb_signOut();
-        console.log('Logged out');
-    } catch (error) {
-        statusMessage = 'Logout failed: ' + error.message;
-    }
-}
-
 function handleExitToSelection() {
     window.location.href = '../../../startscreen.html';
 }
@@ -188,11 +177,6 @@ function setupUI() {
     loginButton = createButton('Login with Google');
     loginButton.position(20, 20);
     loginButton.mousePressed(handleLogin);
-
-    LogoutButton = createButton('Logout');
-    LogoutButton.position(150, 20);
-    LogoutButton.mousePressed(handleLogout);
-    LogoutButton.hide();
 
     getoutButton = createButton('Exit to Start Screen');
     getoutButton.position(300, 20);
@@ -227,9 +211,9 @@ function setupUI() {
     refreshButton.hide();
 
     // Single Leave & Change Class button
-    gameActionButton = createButton('Leave & Change Class');
+    gameActionButton = createButton('Leave');
     gameActionButton.position(20, 190);
-    gameActionButton.mousePressed(handleLeaveAndChangeClass);
+    gameActionButton.mousePressed(handelLeave);
     gameActionButton.hide();
 }
 
@@ -556,7 +540,7 @@ async function changeClassTo(newClass) {
 }
 
 // Combined leave lobby and change class function
-async function handleLeaveAndChangeClass() {
+async function handelLeave() {
     if (!gameID || !userID) {
         statusMessage = 'You are not in a game';
         return;
