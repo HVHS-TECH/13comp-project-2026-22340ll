@@ -7,22 +7,19 @@
 /*************************************************************/
 // -Setup
 let userID, uidClass, gameID, gameNumber; // Making these exist
-let player1, player2, gameTurn;
-let playerClass = '';
-let oppClass = '';
-let playerReady = false;
-let oppReady = false;
-let waitingForOpponent = false;
+let player1, player2, gameTurn, playerClass = '', oppClass = '';
+let playerReady = false, oppReady = false, waitingForOpponent = false;
 // Initialize availableGames as an empty array
 let availableGames = [];
 // Declare image variables
 let imgPlaceholder, imgSpartan, imgWizard, imgPaladin, imgBarbarian, imgCleric, classImages;
 // Declare UI variables
-let loginButton, getoutButton, createGameButton, joinGameButton, gameCodeInput, refreshButton, usernameInput;
-let gameActionButton;
+let loginButton, getoutButton, createGameButton, joinGameButton, gameCodeInput, refreshButton;
+let gameActionButton, usernameInput;
 // Declare other variables
 let statusMessage, isAuthenticated, isAdmin;
-let currentPlayer, opponentPlayer, gameInterval, lobbyListener;
+let currentPlayer, opponentPlayer, currentPlayerName = '', opponentPlayerName = ''; 
+let currentGameData = null, gameInterval, lobbyListener;
 
 console.log("Authenticate Please");
 
@@ -108,22 +105,45 @@ function startGameListener(gameId) {
     gameInterval = onValue(gameRef, (snapshot) => {
         if (!snapshot.exists()) {
             statusMessage = 'Game no longer exists';
-            gameID = null;
-            waitingForOpponent = false;
+            clearGameState();
             return;
         }
 
         const gameData = snapshot.val();
+        currentGameData = gameData;
+        gameID = gameId;
+        waitingForOpponent = true;
 
-        // Check if both players are in and game is ready to start
+        if (auth.currentUser) {
+            userID = auth.currentUser.uid;
+        }
+
+        if (gameData.uid1 === userID) {
+            currentPlayerName = gameData.player1Name || auth.currentUser?.displayName || 'Player 1';
+            opponentPlayerName = gameData.player2Name || 'Waiting...';
+            playerClass = gameData.class1 || playerClass;
+            oppClass = gameData.class2 || oppClass;
+        } else if (gameData.uid2 === userID) {
+            currentPlayerName = gameData.player2Name || auth.currentUser?.displayName || 'Player 2';
+            opponentPlayerName = gameData.player1Name || 'Player 1';
+            playerClass = gameData.class2 || playerClass;
+            oppClass = gameData.class1 || oppClass;
+        } else {
+            currentPlayerName = auth.currentUser?.displayName || 'Player 1';
+            opponentPlayerName = gameData.player2Name || 'Waiting...';
+            playerClass = gameData.class1 || playerClass;
+            oppClass = gameData.class2 || oppClass;
+        }
+
         if (gameData.uid1 && gameData.uid2 && gameData.uid2 !== "" && !gameData.gameOn) {
-            // Both players joined, start the game
-            update(ref(database, `gameScore/BbB/${gameId}`), {
+            update(ref(database, `gameScore/BbB/Wait/${gameId}`), {
                 gameOn: true
             });
-
             statusMessage = 'Both players joined! Starting game...';
+        }
 
+        if (gameActionButton) {
+            gameActionButton.show();
         }
     });
 }
@@ -304,10 +324,21 @@ async function createNewGame() {
     sessionStorage.setItem('playerClass', randomClass);
     sessionStorage.setItem('isHost', 'true');
 
+    // Persist host player name and class in the game record
+    await update(ref(database, `gameScore/BbB/Wait/${gameID}`), {
+        player1Name: username,
+        class1: randomClass
+    });
+
+    playerClass = randomClass;
+    waitingForOpponent = true;
+
     // Show game action button
     gameActionButton.show();
 
     statusMessage = `Game created! Code: ${gameID}`;
+
+    startGameListener(gameID);
 
 }
 
@@ -358,7 +389,8 @@ async function joinGame() {
         // Add player to game
         await update(ref(database, `gameScore/BbB/Wait/${gameCode}`), {
             uid2: userID,
-            Wait: username
+            player2Name: username,
+            class2: randomClass
         });
 
         // Store player info
@@ -371,10 +403,16 @@ async function joinGame() {
         sessionStorage.setItem('playerClass', randomClass);
         sessionStorage.setItem('isHost', 'false');
 
+        gameID = gameCode;
+        playerClass = randomClass;
+        waitingForOpponent = true;
+
         // Show game action button
         gameActionButton.show();
 
         statusMessage = `Joined game: ${gameCode}`;
+
+        startGameListener(gameID);
 
 
 
@@ -637,9 +675,8 @@ function drawGameLobby() {
     const player2X = width / 2 + 200;
     const playerY = 300;
 
-    // Define currentPlayer and opponentPlayer for demo purposes
-    const currentPlayer = auth.currentUser?.displayName || 'Player 1';
-    const opponentPlayer = { username: 'Player 2' };
+    const currentPlayer = currentPlayerName || auth.currentUser?.displayName || 'Player 1';
+    const opponentPlayer = { username: opponentPlayerName || 'Waiting...' };
 
     // Player 1 (current player)
     drawPlayerBox(player1X, playerY, currentPlayer, playerClass, playerReady);
