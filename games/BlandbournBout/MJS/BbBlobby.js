@@ -3,7 +3,6 @@
   -Blandbourn Bout lobby
   -Waiting room for players to join before starting the game.
   -
-
 /*************************************************************/
 // -Setup
 let userID, uidClass, gameID, gameNumber; // Making these exist
@@ -18,25 +17,17 @@ let loginButton, getoutButton, createGameButton, joinGameButton, gameCodeInput, 
 let gameActionButton, usernameInput;
 // Declare other variables
 let statusMessage, isAuthenticated, isAdmin;
-let currentPlayer, opponentPlayer, currentPlayerName = '', opponentPlayerName = ''; 
+let currentPlayer, opponentPlayer, currentgameName = '', opponentgameName = ''; 
 let currentGameData = null, gameInterval, lobbyListener;
 
 console.log("Authenticate Please");
 
 import {
-    fb_initialise,
-    fb_signInWithGoogle,
-    fb_onAuthStateChanged,
-    fb_authChanged,
-    fb_signOut,
-    fb_checkAdminStatus,
-    auth,
-    database,
-    ref,
-    set,
-    get,
-    onValue,
-    update
+    fb_initialise, fb_signInWithGoogle,
+    fb_onAuthStateChanged, fb_authChanged,
+    fb_signOut, fb_checkAdminStatus,
+    auth,database, ref, set, get,
+    onValue, update
 } from '../../../fb_io.mjs';
 
 function setup() {
@@ -105,6 +96,7 @@ function startGameListener(gameId) {
     gameInterval = onValue(gameRef, (snapshot) => {
         if (!snapshot.exists()) {
             statusMessage = 'Game no longer exists';
+            console.log(`Game ${gameId} no longer exists`);
             clearGameState();
             return;
         }
@@ -119,18 +111,18 @@ function startGameListener(gameId) {
         }
 
         if (gameData.uid1 === userID) {
-            currentPlayerName = gameData.player1Name || auth.currentUser?.displayName || 'Player 1';
-            opponentPlayerName = gameData.player2Name || 'Waiting...';
+            currentgameName = gameData.player1Name || auth.currentUser?.displayName || 'Player 1';
+            opponentgameName = gameData.player2Name || 'Waiting...';
             playerClass = gameData.class1 || playerClass;
             oppClass = gameData.class2 || oppClass;
         } else if (gameData.uid2 === userID) {
-            currentPlayerName = gameData.player2Name || auth.currentUser?.displayName || 'Player 2';
-            opponentPlayerName = gameData.player1Name || 'Player 1';
+            currentgameName = gameData.player2Name || auth.currentUser?.displayName || 'Player 2';
+            opponentgameName = gameData.player1Name || 'Player 1';
             playerClass = gameData.class2 || playerClass;
             oppClass = gameData.class1 || oppClass;
         } else {
-            currentPlayerName = auth.currentUser?.displayName || 'Player 1';
-            opponentPlayerName = gameData.player2Name || 'Waiting...';
+            currentgameName = auth.currentUser?.displayName || 'Player 1';
+            opponentgameName = gameData.player2Name || 'Waiting...';
             playerClass = gameData.class1 || playerClass;
             oppClass = gameData.class2 || oppClass;
         }
@@ -140,6 +132,7 @@ function startGameListener(gameId) {
                 gameOn: true
             });
             statusMessage = 'Both players joined! Starting game...';
+            console.log('You know the gist.')
         }
 
         if (gameActionButton) {
@@ -264,6 +257,7 @@ async function refreshAvailableGames() {
         }
 
         statusMessage = `Found ${availableGames.length} available games`;
+        console.log('Numbers of game so far:', availableGames);
     } catch (error) {
         console.error('Error fetching games:', error);
         statusMessage = 'Error refreshing games';
@@ -290,6 +284,7 @@ function checkAuthState() {
 async function createNewGame() {
     if (!isAuthenticated || !auth.currentUser) {
         statusMessage = 'Please login first';
+        console.log('your not supposed to be here yet.');
         return;
     }
 
@@ -337,20 +332,24 @@ async function createNewGame() {
     gameActionButton.show();
 
     statusMessage = `Game created! Code: ${gameID}`;
+    console.log(`the game just got created buddy cant you read`)
 
     startGameListener(gameID);
 
+    console.log(`Game ${gameID} created by user ${userID}`);
 }
 
 async function joinGame() {
     if (!isAuthenticated) {
         statusMessage = 'Please login first';
+        console.log('you idiot');
         return;
     }
 
     const gameCode = gameCodeInput.value().toUpperCase();
     if (!gameCode) {
         statusMessage = 'Please enter a game code';
+        console.log('Pressing enter without anything who couldve seen that coming');
         return;
     }
 
@@ -396,7 +395,7 @@ async function joinGame() {
         // Store player info
         await set(ref(database, `users/${userID}/currentGame`), gameCode);
         await set(ref(database, `users/${userID}/currentClass`), randomClass);
-        await set(ref(database, `users/${userID}/playerName`), username);
+        await set(ref(database, `users/${userID}/gameName`), username);
 
         // Store in sessionStorage for waiting page
         sessionStorage.setItem('gameID', gameCode);
@@ -431,6 +430,7 @@ async function assignRandomClasses(gameId, playerIds) {
     for (let i = 0; i < playerIds.length; i++) {
         const randomClass = classes[Math.floor(Math.random() * classes.length)];
         await set(ref(database, `gameScore/BbB/Wait/${gameId}/players/${playerIds[i]}/class`), randomClass);
+        console.log(`Assigned ${randomClass} to player ${playerIds[i]} in game ${gameId}`);
     }
 }
 
@@ -446,6 +446,7 @@ async function startGame(gameId, gameData) {
     await set(ref(database, `gameScore/BbB/Wait/${gameId}/gameOn`), true);
     await set(ref(database, `gameScore/BbB/Wait/${gameId}/status`), 'active');
     statusMessage = 'Game starting soon!';
+    console.log(`Wait this actually works?`);
 }
 
 function draw() {
@@ -481,6 +482,7 @@ async function cancelGame() {
 
         if (!snapshot.exists()) {
             statusMessage = 'Game no longer exists';
+            console.log(`Game ${gameID} no longer exists`);
             clearGameState();
             return;
         }
@@ -625,14 +627,16 @@ async function handelLeave() {
                 Wait: ''
             });
             statusMessage = 'Left the game';
+
         }
 
         // Clear user's game state
         await set(ref(database, `users/${userID}/currentGame`), null);
-
+        console.log(`Player ${userID} left the game`);
         clearGameState();
     } catch (error) {
         statusMessage = 'Error: ' + error.message;
+        console.error('Error leaving game:', error);
     }
 }
 
@@ -675,8 +679,8 @@ function drawGameLobby() {
     const player2X = width / 2 + 200;
     const playerY = 300;
 
-    const currentPlayer = currentPlayerName || auth.currentUser?.displayName || 'Player 1';
-    const opponentPlayer = { username: opponentPlayerName || 'Waiting...' };
+    const currentPlayer = currentgameName || auth.currentUser?.displayName || 'Player 1';
+    const opponentPlayer = { username: opponentgameName || 'Waiting...' };
 
     // Player 1 (current player)
     drawPlayerBox(player1X, playerY, currentPlayer, playerClass, playerReady);
