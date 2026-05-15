@@ -110,17 +110,17 @@ function startGameListener(gameId) {
             userID = auth.currentUser.uid;
         }
 
-        if (gameData.uid1 === userID) {
+        if (gameData.uid1 === userID) {//player 1 ui
             currentgameName = gameData.player1Name || auth.currentUser?.displayName || 'Player 1';
             opponentgameName = gameData.player2Name || 'Waiting...';
             playerClass = gameData.class1 || playerClass;
             oppClass = gameData.class2 || oppClass;
-        } else if (gameData.uid2 === userID) {
+        } else if (gameData.uid2 === userID) {//player 2 ui
             currentgameName = gameData.player2Name || auth.currentUser?.displayName || 'Player 2';
             opponentgameName = gameData.player1Name || 'Player 1';
             playerClass = gameData.class2 || playerClass;
             oppClass = gameData.class1 || oppClass;
-        } else {
+        } else { //player2 left
             currentgameName = auth.currentUser?.displayName || 'Player 1';
             opponentgameName = gameData.player2Name || 'Waiting...';
             playerClass = gameData.class1 || playerClass;
@@ -513,6 +513,7 @@ async function cancelGame() {
     }
 }
 
+//Remove game if player1 leaves
 function clearGameState() {
     gameID = null;
     playerClass = '';
@@ -526,7 +527,7 @@ function clearGameState() {
     gameActionButton.hide();
 }
 
-async function changeClass() {
+async function changeClass() {//set class
     if (!gameID || !userID) {
         statusMessage = 'You are not in a game';
         return;
