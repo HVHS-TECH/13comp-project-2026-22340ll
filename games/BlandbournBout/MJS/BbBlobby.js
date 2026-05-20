@@ -287,6 +287,8 @@ async function createNewGame() {
         console.log('your not supposed to be here yet.');
         return;
     }
+    
+    createGameButton.hide();
 
     const username = usernameInput.value() || auth.currentUser.displayName || 'Player';
 
@@ -639,6 +641,7 @@ async function handelLeave() {
         statusMessage = 'Error: ' + error.message;
         console.error('Error leaving game:', error);
     }
+    createGameButton.show();
 }
 
 function drawLoginPrompt() {
@@ -702,6 +705,7 @@ function drawGameLobby() {
         text('Ready Up', width / 2, 450);
         if (mouseIsPressed && mouseX > width / 2 - 60 && mouseX < width / 2 + 60 && mouseY > 450 && mouseY < 490) {
             toggleReady();
+            window.location.href = 'BbBgame.html';
         }
     }
 

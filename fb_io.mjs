@@ -165,11 +165,18 @@ async function fb_checkUserExists(userId) {
 async function fb_checkAdminStatus(userId) {
     try {
         if (!userId) return false;
+        if (typeof window !== 'undefined' && window.navigator && window.navigator.onLine === false) {
+            return false;
+        }
 
         const snapshot = await get(ref(database, 'uidAdmin/' + userId));
         return snapshot.exists();
     } catch (error) {
-        console.error("Admin check error:", error);
+        const message = error?.message || '';
+        if (message.includes('Client is offline') || message.includes('offline')) {
+            return false;
+        }
+        console.warn("Admin check error:", error);
         return false;
     }
 }
