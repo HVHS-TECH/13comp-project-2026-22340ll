@@ -695,8 +695,9 @@ function drawGameLobby() {
     // Player 2 (opponent)
     drawPlayerBox(player2X, playerY, opponentPlayer, oppClass, oppReady);
 
-    // Ready button if not ready
-    if (!playerReady && opponentPlayer) {
+    // Ready button only when both players are present in the lobby
+    const bothPlayersPresent = currentGameData && currentGameData.uid1 && currentGameData.uid2 && currentGameData.uid2 !== "";
+    if (!playerReady && bothPlayersPresent) {
         fill(0, 150, 0);
         rect(width / 2 - 60, 450, 120, 40);
         fill(255);
@@ -705,7 +706,7 @@ function drawGameLobby() {
         text('Ready Up', width / 2, 450);
         if (mouseIsPressed && mouseX > width / 2 - 60 && mouseX < width / 2 + 60 && mouseY > 450 && mouseY < 490) {
             toggleReady();
-            window.location.href = 'BbBgame.html';
+
         }
     }
 
@@ -713,6 +714,7 @@ function drawGameLobby() {
         fill(0, 150, 0);
         textSize(20);
         text('Both players ready! Starting game...', width / 2, 520);
+        window.location.href = 'BbBgame.html';
     }
 }
 

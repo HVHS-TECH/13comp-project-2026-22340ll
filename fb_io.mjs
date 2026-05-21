@@ -132,9 +132,20 @@ async function fb_writeUserData(userId, name, email, additionalData = {}) {
  */
 async function fb_getUserData(userId) {
     try {
+        if (typeof window !== 'undefined' && window.navigator && window.navigator.onLine === false) {
+            console.warn("Cannot get user data while offline.");
+            return null;
+        }
+
         const snapshot = await get(ref(database, 'users/' + userId));
         return snapshot.exists() ? snapshot.val() : null;
     } catch (error) {
+        const message = error?.message || '';
+        if (message.includes('Client is offline') || message.includes('offline')) {
+            console.warn("Failed to get user data because client is offline:", error);
+            return null;
+        }
+
         console.error("Failed to get user data:", error);
         throw new Error("Failed to retrieve user data.");
     }
@@ -147,9 +158,20 @@ async function fb_getUserData(userId) {
  */
 async function fb_checkUserExists(userId) {
     try {
+        if (typeof window !== 'undefined' && window.navigator && window.navigator.onLine === false) {
+            console.warn("Cannot check user existence while offline.");
+            return false;
+        }
+
         const snapshot = await get(ref(database, 'users/' + userId));
         return snapshot.exists();
     } catch (error) {
+        const message = error?.message || '';
+        if (message.includes('Client is offline') || message.includes('offline')) {
+            console.warn("User existence check skipped because client is offline:", error);
+            return false;
+        }
+
         console.error("Failed to check user existence:", error);
         throw error;
     }
