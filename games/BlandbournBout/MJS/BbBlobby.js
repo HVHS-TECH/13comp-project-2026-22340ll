@@ -93,7 +93,7 @@ function startGameListener(gameId) {
     if (gameInterval) {
         gameInterval(); // Clean up previous listener
     }
-    gameInterval = onValue(gameRef, (snapshot) => {
+    gameInterval = onValue(gameRef, async (snapshot) => {
         if (!snapshot.exists()) {
             statusMessage = 'Game no longer exists';
             console.log(`Game ${gameId} no longer exists`);
@@ -125,6 +125,26 @@ function startGameListener(gameId) {
             opponentgameName = gameData.player2Name || 'Waiting...';
             playerClass = gameData.class1 || playerClass;
             oppClass = gameData.class2 || oppClass;
+        }
+
+        updateReadyStates(gameData);
+
+        const bothPlayersPresent = gameData.uid1 && gameData.uid2 && gameData.uid2 !== "";
+        if (bothPlayersPresent && !gameData.players) {
+            const playersPayload = {}; 
+            playersPayload[gameData.uid1] = {
+                ready: false,
+                class: gameData.class1 || playerClass,
+                name: gameData.player1Name || 'Player 1'
+            };
+            playersPayload[gameData.uid2] = {
+                ready: false,
+                class: gameData.class2 || oppClass,
+                name: gameData.player2Name || 'Player 2'
+            };
+            await update(ref(database, `gameScore/BbB/Wait/${gameId}`), {
+                players: playersPayload
+            });
         }
 
         if (gameData.uid1 && gameData.uid2 && gameData.uid2 !== "" && !gameData.gameOn) {
@@ -309,7 +329,14 @@ async function createNewGame() {
         Wait: "",
         gameOn: false,
         turn: userID,
-        DMG: 0
+        DMG: 0,
+        players: {
+            [userID]: {
+                ready: false,
+                class: randomClass,
+                name: username
+            }
+        }
     });
 
     // Store player info in separate node or in users
@@ -394,6 +421,12 @@ async function joinGame() {
             class2: randomClass
         });
 
+        await set(ref(database, `gameScore/BbB/Wait/${gameCode}/players/${userID}`), {
+            ready: false,
+            class: randomClass,
+            name: username
+        });
+
         // Store player info
         await set(ref(database, `users/${userID}/currentGame`), gameCode);
         await set(ref(database, `users/${userID}/currentClass`), randomClass);
@@ -438,9 +471,17 @@ async function assignRandomClasses(gameId, playerIds) {
 
 async function toggleReady() {
     if (!gameID || !userID) return;
-    // Check if player is in the game
     const newReadyState = !playerReady;
     await set(ref(database, `gameScore/BbB/Wait/${gameID}/players/${userID}/ready`), newReadyState);
+}
+
+function updateReadyStates(gameData) {
+    if (!gameData || !userID) return;
+    const players = gameData.players || {};
+    const otherUid = gameData.uid1 === userID ? gameData.uid2 : gameData.uid1;
+
+    playerReady = !!(players[userID] && players[userID].ready);
+    oppReady = !!(otherUid && players[otherUid] && players[otherUid].ready);
 }
 
 async function startGame(gameId, gameData) {
@@ -500,9 +541,10 @@ async function cancelGame() {
             // Joiner is leaving, just remove uid2
             await update(gameRef, {
                 uid2: '',
-                Wait: ''
+                Wait: '',
+                statusMessage: 'Left the game'
             });
-            statusMessage = 'Left the game';
+            
         }
 
         // Clear user's game state
@@ -695,26 +737,40 @@ function drawGameLobby() {
     // Player 2 (opponent)
     drawPlayerBox(player2X, playerY, opponentPlayer, oppClass, oppReady);
 
-    // Ready button only when both players are present in the lobby
     const bothPlayersPresent = currentGameData && currentGameData.uid1 && currentGameData.uid2 && currentGameData.uid2 !== "";
-    if (!playerReady && bothPlayersPresent) {
+    const readyCount = (playerReady ? 1 : 0) + (oppReady ? 1 : 0);
+
+    if (bothPlayersPresent) {
         fill(0, 150, 0);
         rect(width / 2 - 60, 450, 120, 40);
         fill(255);
         textSize(18);
         textAlign(CENTER);
-        text('Ready Up', width / 2, 450);
-        if (mouseIsPressed && mouseX > width / 2 - 60 && mouseX < width / 2 + 60 && mouseY > 450 && mouseY < 490) {
-            toggleReady();
+        text(playerReady ? 'Cancel Ready' : 'Ready Up', width / 2, 450);
 
-        }
+        fill(0);
+        textSize(16);
+        text(`${readyCount}/2 players ready`, width / 2, 520);
+    } else {
+        fill(0);
+        textSize(16);
+        text('Waiting for opponent to join...', width / 2, 520);
     }
 
     if (playerReady && oppReady) {
         fill(0, 150, 0);
         textSize(20);
-        text('Both players ready! Starting game...', width / 2, 520);
+        text('Both players ready! Starting game...', width / 2, 550);
         window.location.href = 'BbBgame.html';
+    }
+}
+
+function mouseClicked() {
+    const bothPlayersPresent = currentGameData && currentGameData.uid1 && currentGameData.uid2 && currentGameData.uid2 !== "";
+    if (!bothPlayersPresent) return;
+
+    if (mouseX > width / 2 - 60 && mouseX < width / 2 + 60 && mouseY > 450 && mouseY < 490) {
+        toggleReady();
     }
 }
 
