@@ -130,6 +130,7 @@ function startGameListener(gameId) {
         updateReadyStates(gameData);
 
         const bothPlayersPresent = gameData.uid1 && gameData.uid2 && gameData.uid2 !== "";
+        // Ensure players object exists; if not, create default entries
         if (bothPlayersPresent && !gameData.players) {
             const playersPayload = {}; 
             playersPayload[gameData.uid1] = {
@@ -147,12 +148,25 @@ function startGameListener(gameId) {
             });
         }
 
-        if (gameData.uid1 && gameData.uid2 && gameData.uid2 !== "" && !gameData.gameOn) {
-            update(ref(database, `gameScore/BbB/Wait/${gameId}`), {
-                gameOn: true
+        // Start the game only when both players have marked ready
+        const playersObj = gameData.players || {};
+        const bothReady = bothPlayersPresent && playersObj[gameData.uid1] && playersObj[gameData.uid2] && playersObj[gameData.uid1].ready && playersObj[gameData.uid2].ready;
+
+        if (bothReady && !gameData.gameOn) {
+            await update(ref(database, `gameScore/BbB/Wait/${gameId}`), {
+                gameOn: true,
+                status: 'active'
             });
-            statusMessage = 'Both players joined! Starting game...';
-            console.log('You know the gist.')
+            statusMessage = 'Both players ready! Starting game...';
+            console.log(`Starting game ${gameId} because both players are ready.`);
+        }
+
+        // If the game has been marked active, redirect this client to the game page
+        if (gameData.gameOn) {
+            try {
+                sessionStorage.setItem('gameID', gameId);
+            } catch (e) {}
+            window.location.href = 'BbBgame.html';
         }
 
         if (gameActionButton) {
@@ -284,7 +298,7 @@ async function refreshAvailableGames() {
     }
 }
 
-function checkAuthState() {
+function checkAuthState() { // Check authentication state and set up listener
     fb_onAuthStateChanged(async (user) => {
         if (user) {
             isAuthenticated = true;
@@ -586,7 +600,7 @@ async function changeClass() {//set class
     await changeClassTo(newClass);
 }
 
-// Helper function to change class directly
+// Function to change class directly
 async function changeClassTo(newClass) {
     if (!gameID || !userID) {
         statusMessage = 'You are not in a game';
