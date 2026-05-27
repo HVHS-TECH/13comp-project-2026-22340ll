@@ -755,12 +755,21 @@ function drawGameLobby() {
     const readyCount = (playerReady ? 1 : 0) + (oppReady ? 1 : 0);
 
     if (bothPlayersPresent) {
-        fill(0, 150, 0);
-        rect(width / 2 - 60, 450, 120, 40);
-        fill(255);
-        textSize(18);
-        textAlign(CENTER);
-        text(playerReady ? 'Cancel Ready' : 'Ready Up', width / 2, 450);
+        // Only show the button if player is not ready
+        if (!playerReady) {
+            fill(0, 150, 0);
+            rect(width / 2 - 60, 450, 120, 40);
+            fill(255);
+            textSize(18);
+            textAlign(CENTER);
+            text('Ready Up', width / 2, 450);
+        } else {
+            // Show ready status instead of button
+            fill(0, 150, 0);
+            textSize(18);
+            textAlign(CENTER);
+            text('You are Ready!', width / 2, 450);
+        }
 
         fill(0);
         textSize(16);
@@ -775,16 +784,16 @@ function drawGameLobby() {
         fill(0, 150, 0);
         textSize(20);
         text('Both players ready! Starting game...', width / 2, 550);
-        window.location.href = 'BbBgame.html';
     }
 }
 
 function mouseClicked() {
     const bothPlayersPresent = currentGameData && currentGameData.uid1 && currentGameData.uid2 && currentGameData.uid2 !== "";
-    if (!bothPlayersPresent) return;
+    if (!bothPlayersPresent || playerReady) return;
 
     if (mouseX > width / 2 - 60 && mouseX < width / 2 + 60 && mouseY > 450 && mouseY < 490) {
         toggleReady();
+        return false;
     }
 }
 
@@ -869,6 +878,7 @@ function windowWillUnload() {
 window.setup = setup;
 window.preload = preload;
 window.draw = draw;
+window.mouseClicked = mouseClicked;
 
 // Add event listener for cleanup on page unload
 window.addEventListener('beforeunload', windowWillUnload);
