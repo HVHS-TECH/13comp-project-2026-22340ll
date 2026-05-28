@@ -8,12 +8,17 @@
 import { fb_initialise, fb_authChanged }
     from "../../../fb_io.mjs"; //Import
 
+let gameID = null;
+
 function setup() {
     createCanvas(windowWidth, windowHeight);
     funcSetupScore();
     setupHealthDisplayU();
     setupHealthDisplayOpp();
     funcImg();
+
+    gameID = sessionStorage.getItem('gameID');
+    console.log('Loaded gameID from BbBlobby.html:', gameID);
 
     // Initialize Firebase  
     fb_initialise();

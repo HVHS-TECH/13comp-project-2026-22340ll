@@ -153,12 +153,14 @@ function startGameListener(gameId) {
         const bothReady = bothPlayersPresent && playersObj[gameData.uid1] && playersObj[gameData.uid2] && playersObj[gameData.uid1].ready && playersObj[gameData.uid2].ready;
 
         if (bothReady && !gameData.gameOn) {
-            await update(ref(database, `gameScore/BbB/Wait/${gameId}`), {
-                gameOn: true,
-                status: 'active'
-            });
+            await moveGameToActive(gameId, gameData);
             statusMessage = 'Both players ready! Starting game...';
             console.log(`Starting game ${gameId} because both players are ready.`);
+            try {
+                sessionStorage.setItem('gameID', gameId);
+            } catch (e) {}
+            window.location.href = 'BbBgame.html';
+            return;
         }
 
         // If the game has been marked active, redirect this client to the game page
@@ -498,10 +500,21 @@ function updateReadyStates(gameData) {
     oppReady = !!(otherUid && players[otherUid] && players[otherUid].ready);
 }
 
+async function moveGameToActive(gameId, gameData) {
+    const waitRef = ref(database, `gameScore/BbB/Wait/${gameId}`);
+    const activeRef = ref(database, `gameScore/BbB/gameOn/${gameId}`);
+    const activeGameData = {
+        ...gameData,
+        gameOn: true,
+        status: 'active'
+    };
+
+    await set(activeRef, activeGameData);
+    await set(waitRef, null);
+}
+
 async function startGame(gameId, gameData) {
-    // Set game to active
-    await set(ref(database, `gameScore/BbB/Wait/${gameId}/gameOn`), true);
-    await set(ref(database, `gameScore/BbB/Wait/${gameId}/status`), 'active');
+    await moveGameToActive(gameId, gameData);
     statusMessage = 'Game starting soon!';
     console.log(`Wait this actually works?`);
 }
