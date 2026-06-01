@@ -67,18 +67,18 @@ let opponentEffects = {
 };
 
 // ==================== CLASS STATISTICS ====================
-// Each class has unique HP, move damage, healing, and special ability
+// Each class has different HP, move damage, healing, and special ability
 const CLASS_STATS = {
     Barbarian: { 
-        hp: 150,           // High HP, high damage, sluggish healing
-        neutral: 20, 
-        heavy: 45, 
+        hp: 75,           // Glass Cannon (thanks william), high damage, sluggish healing
+        neutral: 40, 
+        heavy: 55, 
         heal: 20, 
         special: "bleed", 
         specialDesc: "Bleed: 5 damage for 3 turns"
     },
     Cleric: { 
-        hp: 100,           // Low HP, high healing
+        hp: 110,           // Low HP, high healing
         neutral: 15, 
         heavy: 20, 
         heal: 45, 
@@ -86,7 +86,7 @@ const CLASS_STATS = {
         specialDesc: "Passive heal: +10 HP for 3 turns"
     },
     Spartan: { 
-        hp: 125,           // Balanced, damage buff special
+        hp: 150,           // High HP, damage buff special
         neutral: 20, 
         heavy: 30, 
         heal: 25, 
@@ -102,10 +102,10 @@ const CLASS_STATS = {
         specialDesc: "Block: Negate next attack"
     },
     Wizard: { 
-        hp: 85,            // Very low HP, high neutral damage, weaken special
-        neutral: 25, 
+        hp: 90,            // Low HP, high neutral damage, weaken special
+        neutral: 35, 
         heavy: 10, 
-        heal: 50, 
+        heal: 35, 
         special: "weaken", 
         specialDesc: "Weaken: Reduce enemy damage by 10 for 3 turns"
     }
@@ -147,8 +147,9 @@ function preload() {
         'default': imgPlaceholder
     };
 }
+
 function setup() {
-    createCanvas(1400, 800);
+    createCanvas(windowWidth, windowHeight);
     textFont('monospace');
     textAlign(CENTER, CENTER);
     rectMode(CORNER);
@@ -377,3 +378,207 @@ function updateGameState(gameData) {
         statusMessage = myTurn ? "YOUR TURN! Choose an action" : "Opponent's turn... Waiting...";
     }
 }
+
+// ==================== PERFORM ACTION ====================
+// Handles the player's move: calculates damage, healing, status effects, and cooldowns
+// Then updates Firebase with the new game state
+async function performAction(actionType) {
+    // Validation: Check if player can act
+    if (!myTurn || !gameActive || winnerDeclared || actionInProgress) {
+        statusMessage = "Not your turn or game is over!";
+        return;
+    }
+    
+    // Check if move is on cooldown
+    if (playerCooldowns[actionType] > 0) {
+        statusMessage = `${actionType.toUpperCase()} on cooldown! ${playerCooldowns[actionType]} turns remaining.`;
+        return;
+    }
+    
+    // Prevent using the same move twice in a row
+    if (lastMoveUsed === actionType) {
+        statusMessage = "You cannot use the same move twice in a row!";
+        return;
+    }
+    
+    actionInProgress = true;
+    
+    const stats = CLASS_STATS[playerClass];
+    let damage = 0;
+    let healing = 0;
+    let actionLog = "";
+    let newPlayerEffects = { ...playerEffects }; // "..." avoids mutating the original playerEffects and opponentEffects
+    let newOpponentEffects = { ...opponentEffects };
+    
+    // Calculate damage modifiers from status effects
+    let playerDamageBonus = (playerEffects.dmgBuffTurns > 0) ? 10 : 0;
+    let opponentDamageReduction = (opponentEffects.weakenTurns > 0) ? 10 : 0;
+    
+    // ==================== MOVE LOGIC ====================
+    switch(actionType) {
+        case "neutral":
+            damage = stats.neutral + playerDamageBonus - opponentDamageReduction;
+            damage = Math.max(1, damage);  // Minimum 1 damage
+            actionLog = `${playerName} uses NEUTRAL ATTACK!`;
+            playerCooldowns.neutral = 2;   // 2 turn cooldown
+            break;
+        case "heavy":
+            damage = stats.heavy + playerDamageBonus - opponentDamageReduction;
+            damage = Math.max(1, damage);
+            actionLog = `${playerName} uses HEAVY STRIKE!`;
+            playerCooldowns.heavy = 2;
+            break;
+        case "heal":
+            healing = stats.heal;
+            actionLog = `${playerName} uses HEAL! Restored ${healing} HP.`;
+            playerCooldowns.heal = 2;
+            break;
+        case "special":
+            actionLog = `${playerName} uses SPECIAL!`;
+            playerCooldowns.special = 5;   // Special has 5 turn cooldown
+            
+            // Apply special ability based on class
+            switch(stats.special) {
+                case "bleed":
+                    newOpponentEffects.bleedTurns = 3;
+                    actionLog += " Opponent will bleed for 3 turns!";
+                    break;
+                case "passiveHeal":
+                    newPlayerEffects.passiveHealTurns = 3;
+                    actionLog += " You will heal for 3 turns!";
+                    break;
+                case "dmgBuff":
+                    newPlayerEffects.dmgBuffTurns = 3;
+                    actionLog += " Your damage is increased for 3 turns!";
+                    break;
+                case "block":
+                    newPlayerEffects.blockRemaining = true;
+                    actionLog += " You will block the next attack!";
+                    break;
+                case "weaken":
+                    newOpponentEffects.weakenTurns = 3;
+                    actionLog += " Opponent's damage is weakened for 3 turns!";
+                    break;
+            }
+            break;
+    }
+
+       
+    // ==================== APPLY STATUS EFFECTS ====================
+    // Bleed effect (damage over time)
+    if (playerEffects.bleedTurns > 0) {
+        let bleedDamage = 5;
+        newPlayerHP = Math.max(0, newPlayerHP - bleedDamage);
+        actionLog += ` Bleed deals ${bleedDamage} damage to you!`;
+        newPlayerEffects.bleedTurns = playerEffects.bleedTurns - 1;
+    }
+    if (opponentEffects.bleedTurns > 0) {
+        let bleedDamage = 5;
+        newOpponentHP = Math.max(0, newOpponentHP - bleedDamage);
+        actionLog += ` Bleed deals ${bleedDamage} damage to opponent!`;
+        newOpponentEffects.bleedTurns = opponentEffects.bleedTurns - 1;
+    }
+    
+    // Passive heal effect (healing over time)
+    if (playerEffects.passiveHealTurns > 0) {
+        let passiveHeal = 10;
+        newPlayerHP = Math.min(maxPlayerHP, newPlayerHP + passiveHeal);
+        actionLog += ` Passive heal restores ${passiveHeal} HP!`;
+        newPlayerEffects.passiveHealTurns = playerEffects.passiveHealTurns - 1;
+    }
+    if (opponentEffects.passiveHealTurns > 0) {
+        let passiveHeal = 10;
+        newOpponentHP = Math.min(maxOpponentHP, newOpponentHP + passiveHeal);
+        actionLog += ` Opponent's passive heal restores ${passiveHeal} HP!`;
+        newOpponentEffects.passiveHealTurns = opponentEffects.passiveHealTurns - 1;
+    }
+    
+    // Decrease buff/debuff timers
+    if (newPlayerEffects.dmgBuffTurns > 0) newPlayerEffects.dmgBuffTurns--;
+    if (newOpponentEffects.weakenTurns > 0) newOpponentEffects.weakenTurns--;
+    
+    // ==================== UPDATE DAMAGE TRACKING ====================
+    let newPlayerDamageTotal = playerTotalDamageDealt;
+    let newOpponentDamageTotal = opponentTotalDamageDealt;
+    
+    if (damageDealtThisTurn > 0) {
+        newPlayerDamageTotal += damageDealtThisTurn;
+    }
+    
+    // Add to battle log
+    addToBattleLog(actionLog, "player");
+    lastActionText = actionLog;
+
+    // ==================== CHECK FOR WINNER ====================
+    let winner = null;
+    
+    if (newOpponentHP <= 0) {
+        winner = playerName;
+        gameActive = false;
+        winnerDeclared = true;
+        addToBattleLog(`${playerName} WINS THE BOUT!`, "system");
+    } else if (newPlayerHP <= 0) {
+        winner = opponentName;
+        gameActive = false;
+        winnerDeclared = true;
+        addToBattleLog(`${opponentName} WINS THE BOUT!`, "system");
+    }
+    
+    // Decrease cooldowns (move cooldowns decrease each turn)
+    for (let key in playerCooldowns) {
+        if (playerCooldowns[key] > 0) playerCooldowns[key]--;
+    }
+    
+        // ==================== UPDATE FIREBASE ====================
+    const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
+    const updateData = {
+        turn: opponentUID,              // Switch turn to opponent
+        lastMoveUsed: actionType,
+        lastActionText: actionLog,
+        playerCooldowns: playerCooldowns,
+        opponentCooldowns: opponentCooldowns,
+        playerEffects: newPlayerEffects,
+        opponentEffects: newOpponentEffects
+    };
+    
+    // Update health and damage fields based on player slot
+    if (isPlayer1) {
+        updateData.uid1health = newPlayerHP;
+        updateData.uid2health = newOpponentHP;
+        updateData.uid1DMG = newPlayerDamageTotal;
+        updateData.uid2DMG = newOpponentDamageTotal;
+    } else {
+        updateData.uid2health = newPlayerHP;
+        updateData.uid1health = newOpponentHP;
+        updateData.uid2DMG = newPlayerDamageTotal;
+        updateData.uid1DMG = newOpponentDamageTotal;
+    }
+    
+    if (winner) {
+        updateData.winner = winner;
+        updateData.gameActive = false;
+    }
+    
+    await update(gameRef, updateData);
+    
+    // ==================== UPDATE LOCAL STATE ====================
+    playerHP = newPlayerHP;
+    opponentHP = newOpponentHP;
+    playerTotalDamageDealt = newPlayerDamageTotal;
+    opponentTotalDamageDealt = newOpponentDamageTotal;
+    currentTurn = opponentUID;
+    myTurn = false;
+    actionInProgress = false;
+}
+
+// ==================== BATTLE LOG ====================
+// Adds a message to the battle log with a timestamp
+function addToBattleLog(message, type = "player") {
+    battleLog.unshift({
+        message: message,
+        type: type,
+        time: new Date().toLocaleTimeString()
+    });
+    if (battleLog.length > 15) battleLog.pop();  // Keep only last 15 entries
+}
+
