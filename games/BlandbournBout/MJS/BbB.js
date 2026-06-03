@@ -113,6 +113,8 @@ const CLASS_STATS = {
 
 // Image variables
 let imgSpartan, imgWizard, imgPaladin, imgBarbarian, imgCleric, imgPlaceholder;
+let battlebackImages = [];
+let selectedBattleback = null;
 let classImages = {};
 
 // UI state
@@ -132,8 +134,15 @@ let userTotalWins = 0;
 // ==================== P5.js SETUP ====================
 function preload() {
     imgPlaceholder = loadImage('../other/images.jpg');
-    imgSpartan = loadImage('../other/Kratos_PS4.png');
-    imgWizard = loadImage('../other/BbBWiz.png');
+    battlebackImages = [         // All backgrounds credit to Gabriel 'Nidhoggn' de Aguiar
+        loadImage('../other/battleback1.png'), // (https://opengameart.org/users/nidhoggn)
+        loadImage('../other/battleback2.png'), 
+        loadImage('../other/battleback3.png'),
+        loadImage('../other/battleback9.png'),
+        loadImage('../other/battleback10.png')
+    ];
+    imgSpartan = loadImage('../other/Kratos_PS4.png'); // all property of Kratos go to Sony and Playstation.
+    imgWizard = loadImage('../other/BbBWiz.png'); // Also using Kratos as the spartan just seems funny to me.
     imgPaladin = loadImage('../other/BbBPal.png');
     imgBarbarian = loadImage('../other/BbBBarb.png');
     imgCleric = loadImage('../other/BbBCler.png');
@@ -165,6 +174,9 @@ function setup() {
 async function setupGame() {
     gameID = sessionStorage.getItem('gameID');
     userID = sessionStorage.getItem('userID');
+    
+    // Select a random battleback for this game
+    selectedBattleback = random(battlebackImages);
 
 }
 
@@ -426,7 +438,7 @@ async function performAction(actionType) {
             damage = stats.heavy + playerDamageBonus - opponentDamageReduction;
             damage = Math.max(1, damage);
             actionLog = `${playerName} uses HEAVY STRIKE!`;
-            playerCooldowns.heavy = 2;
+            playerCooldowns.heavy = 2;  //2 turn cooldown
             break;
         case "heal":
             healing = stats.heal;
@@ -435,7 +447,7 @@ async function performAction(actionType) {
             break;
         case "special":
             actionLog = `${playerName} uses SPECIAL!`;
-            playerCooldowns.special = 5;   // Special has 5 turn cooldown
+            playerCooldowns.special = 5;   // Special has 5 turn cooldown for balancing purposes
             
             // Apply special ability based on class
             switch(stats.special) {
@@ -582,3 +594,355 @@ function addToBattleLog(message, type = "player") {
     if (battleLog.length > 15) battleLog.pop();  // Keep only last 15 entries
 }
 
+// ==================== SAVE WIN TO FIREBASE ====================
+// Increments the user's win count and total damage in the users/{uid} path
+async function saveWinToFirebase() {
+    if (!userID || !playerName) return;
+    
+    try {
+        const userRef = ref(database, `users/${userID}`);
+        const snapshot = await get(userRef);
+        
+        let currentWins = 0;
+        let currentDamage = 0;
+        
+        if (snapshot.exists()) {
+            const userData = snapshot.val();
+            currentWins = userData.wins || 0;
+            currentDamage = userData.totalDamage || 0;
+        }
+        
+        const newWins = currentWins + 1;
+        const newDamage = currentDamage + playerTotalDamageDealt;
+        
+        await update(userRef, {
+            wins: newWins,
+            totalDamage: newDamage,
+            lastWinDate: new Date().toISOString()
+        });
+        
+        userTotalWins = newWins;
+        console.log(`Win saved! ${playerName} now has ${newWins} wins`);
+        addToBattleLog(`${playerName} now has ${newWins} total wins!`, "system");
+        
+    } catch (error) {
+        console.error('Error saving win to users:', error);
+    }
+}
+
+// ==================== DRAW FUNCTIONS ====================
+
+// Main draw loop - runs every frame
+function draw() {
+    // Background
+    if (selectedBattleback) {
+        // Draw battleback stretched to fit width while maintaining aspect ratio
+        const bgAspect = selectedBattleback.width / selectedBattleback.height;
+        const bgHeight = width / bgAspect;
+        image(selectedBattleback, 0, 0, width, bgHeight);
+    } else {
+        background(20, 25, 45);
+    }
+    
+    // Decorative border
+    stroke(201, 168, 123);
+    strokeWeight(4);
+    noFill();
+    rect(20, 20, width - 40, height - 40, 30);
+    
+    // Game title
+    fill(230, 200, 143);
+    textSize(36);
+    textStyle(BOLD);
+    text("BLANDBOURN BOUT", width / 2, 55);
+    
+    // Display user's win count (top right)
+    fill(230, 200, 143);
+    textSize(14);
+    textAlign(RIGHT, CENTER);
+    text(`Wins: ${userTotalWins}`, width - 40, 45);
+    textAlign(CENTER, CENTER);
+    
+    // Status message panel (turn indicator)
+    fill(50, 50, 70);
+    noStroke();
+    rect(width / 2 - 200, 75, 400, 45, 20);
+    fill(myTurn && gameActive && !winnerDeclared ? 255 : 200);
+    textSize(18);
+    text(statusMessage, width / 2, 98);
+    
+    // VS text between player cards
+    fill(230, 200, 143);
+    textSize(52);
+    text("VS", width / 2, height / 2 - 30);
+    
+    // Draw both player cards
+    drawPlayerCard(true, 80, 160, 500, 380);   // Player card (left)
+    drawPlayerCard(false, width - 580, 160, 500, 380); // Opponent card (right)
+    
+    // Draw action buttons only if it's player's turn and game is active
+    if (myTurn && gameActive && !winnerDeclared) {
+        drawActionButtons();
+    }
+    
+    // Draw UI panels
+    drawBattleLog();
+    drawCooldownInfo();
+    drawDamageInfo();
+    
+    // Display last action at the bottom
+    if (lastActionText) {
+        fill(200, 200, 200);
+        textSize(13);
+        text(lastActionText, width / 2, height - 50);
+    }
+}
+
+// Draws a player card with HP bar, class image, name, and status effects
+function drawPlayerCard(isPlayer, x, y, w, h) {
+    const className = isPlayer ? playerClass : opponentClass;
+    const hp = isPlayer ? playerHP : opponentHP;
+    const maxHp = isPlayer ? maxPlayerHP : maxOpponentHP;
+    const name = isPlayer ? playerName : opponentName;
+    const effects = isPlayer ? playerEffects : opponentEffects;
+    const totalDamage = isPlayer ? playerTotalDamageDealt : opponentTotalDamageDealt;
+    
+    // Card background (different colors for player vs opponent)
+    if (isPlayer) {
+        fill(30, 40, 70);
+    } else {
+        fill(50, 30, 45);
+    }
+    stroke(201, 168, 123);
+    strokeWeight(2);
+    rect(x, y, w, h, 20);
+    
+    // Class image
+    const img = classImages[className] || classImages['default'];
+    if (img) {
+        if (isPlayer) {
+            image(img, x + 25, y + 25, 130, 130);
+        } else {
+            // Flip opponent sprite horizontally
+            push();
+            translate(x + 25 + 130, y + 25);
+            scale(-1, 1);
+            image(img, 0, 0, 130, 130);
+            pop();
+        }
+    }
+    
+    // Player name
+    fill(230, 200, 143);
+    textSize(26);
+    text(name, x + w / 2, y + 45);
+    
+    // Class name
+    fill(180, 180, 200);
+    textSize(18);
+    text(className || "???", x + w / 2, y + 80);
+    
+    // HP bar background
+    fill(60, 30, 30);
+    rect(x + 25, y + 175, w - 50, 28, 10);
+    
+    // HP bar fill (percentage based)
+    const hpPercent = Math.max(0, hp / maxHp);
+    fill(76, 175, 80);
+    rect(x + 25, y + 175, (w - 50) * hpPercent, 28, 10);
+    
+    // HP text
+    fill(255);
+    textSize(20);
+    text(`HP: ${Math.max(0, hp)} / ${maxHp}`, x + w / 2, y + 218);
+    
+    // Status effects text (BLEED, REGEN, DMG+, BLOCK, WEAKEN)
+    let effectText = "";
+    if (effects.bleedTurns > 0) effectText += "BLEED ";
+    if (effects.passiveHealTurns > 0) effectText += "REGEN ";
+    if (effects.dmgBuffTurns > 0) effectText += "DMG+ ";
+    if (effects.blockRemaining) effectText += "BLOCK ";
+    if (effects.weakenTurns > 0) effectText += "WEAKEN ";
+    
+    fill(255, 200, 100);
+    textSize(13);
+    text(effectText, x + w / 2, y + 260);
+    
+    // Total damage dealt display
+    fill(180, 180, 220);
+    textSize(12);
+    text(`Total Dmg: ${totalDamage}`, x + w / 2, y + 290);
+}
+
+// Draws the four action buttons (Neutral, Heavy, Heal, Special)
+function drawActionButtons() {
+    const stats = CLASS_STATS[playerClass];
+    const btnY = height - 140;
+    const btnW = 150;
+    const btnH = 55;
+    const spacing = 25;
+    const startX = width / 2 - (btnW * 2 + spacing);
+    
+    buttons = [];  // Reset button coordinates array
+    
+    // ===== NEUTRAL BUTTON =====
+    let btnX = startX;
+    let isNeutralCD = playerCooldowns.neutral > 0;
+    fill(isNeutralCD ? 80 : 74, 106, 138);
+    rect(btnX, btnY, btnW, btnH, 12);
+    fill(255);
+    textSize(15);
+    text("NEUTRAL", btnX + btnW/2, btnY + btnH/2 - 8);
+    textSize(13);
+    text(`${stats.neutral} dmg`, btnX + btnW/2, btnY + btnH/2 + 10);
+    if (isNeutralCD) {
+        fill(255, 100, 100);
+        text(`CD: ${playerCooldowns.neutral}`, btnX + btnW/2, btnY + btnH - 12);
+    }
+    buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "neutral", isCD: isNeutralCD });
+    
+    // ===== HEAVY BUTTON =====
+    btnX += btnW + spacing;
+    let isHeavyCD = playerCooldowns.heavy > 0;
+    fill(isHeavyCD ? 80 : 138, 74, 74);
+    rect(btnX, btnY, btnW, btnH, 12);
+    fill(255);
+    text("HEAVY", btnX + btnW/2, btnY + btnH/2 - 8);
+    text(`${stats.heavy} dmg`, btnX + btnW/2, btnY + btnH/2 + 10);
+    if (isHeavyCD) {
+        fill(255, 100, 100);
+        text(`CD: ${playerCooldowns.heavy}`, btnX + btnW/2, btnY + btnH - 12);
+    }
+    buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "heavy", isCD: isHeavyCD });
+    
+    // ===== HEAL BUTTON =====
+    btnX += btnW + spacing;
+    let isHealCD = playerCooldowns.heal > 0;
+    fill(isHealCD ? 80 : 74, 138, 94);
+    rect(btnX, btnY, btnW, btnH, 12);
+    fill(255);
+    text("HEAL", btnX + btnW/2, btnY + btnH/2 - 8);
+    text(`+${stats.heal} HP`, btnX + btnW/2, btnY + btnH/2 + 10);
+    if (isHealCD) {
+        fill(255, 100, 100);
+        text(`CD: ${playerCooldowns.heal}`, btnX + btnW/2, btnY + btnH - 12);
+    }
+    buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "heal", isCD: isHealCD });
+    
+    // ===== SPECIAL BUTTON =====
+    btnX += btnW + spacing;
+    let isSpecialCD = playerCooldowns.special > 0;
+    fill(isSpecialCD ? 80 : 138, 106, 58);
+    rect(btnX, btnY, btnW, btnH, 12);
+    fill(255);
+    textSize(13);
+    text("SPECIAL", btnX + btnW/2, btnY + btnH/2 - 12);
+    textSize(10);
+    text(stats.specialDesc.substring(0, 18), btnX + btnW/2, btnY + btnH/2 + 5);
+    if (isSpecialCD) {
+        fill(255, 100, 100);
+        textSize(11);
+        text(`CD: ${playerCooldowns.special}`, btnX + btnW/2, btnY + btnH - 10);
+    }
+    buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "special", isCD: isSpecialCD });
+}
+
+// Draws the battle log panel showing recent actions
+function drawBattleLog() {
+    const logX = 30;
+    const logY = height - 230;
+    const logW = 320;
+    const logH = 180;
+    
+    fill(0, 0, 0, 200);
+    rect(logX, logY, logW, logH, 10);
+    
+    fill(230, 200, 143);
+    textSize(14);
+    text("BATTLE LOG", logX + 10, logY + 22);
+    
+    textSize(11);
+    for (let i = 0; i < Math.min(8, battleLog.length); i++) {
+        const entry = battleLog[i];
+        // Color coding: player actions = blue, system messages = yellow, others = gray
+        if (entry.type === "player") fill(100, 200, 255);
+        else if (entry.type === "system") fill(255, 220, 100);
+        else fill(180);
+        let displayMsg = entry.message;
+        if (displayMsg.length > 35) displayMsg = displayMsg.substring(0, 32) + "...";
+        text(displayMsg, logX + 10, logY + 45 + (i * 16));
+    }
+}
+
+// Draws the cooldown information panel
+function drawCooldownInfo() {
+    const infoX = width - 350;
+    const infoY = height - 230;
+    const infoW = 320;
+    const infoH = 180;
+    
+    fill(0, 0, 0, 200);
+    rect(infoX, infoY, infoW, infoH, 10);
+    
+    fill(230, 200, 143);
+    textSize(14);
+    text("COOLDOWNS", infoX + 10, infoY + 22);
+    
+    fill(200);
+    textSize(13);
+    const neutralStatus = playerCooldowns.neutral > 0 ? `${playerCooldowns.neutral} turns` : "READY";
+    const heavyStatus = playerCooldowns.heavy > 0 ? `${playerCooldowns.heavy} turns` : "READY";
+    const healStatus = playerCooldowns.heal > 0 ? `${playerCooldowns.heal} turns` : "READY";
+    const specialStatus = playerCooldowns.special > 0 ? `${playerCooldowns.special} turns` : "READY";
+    
+    text(`Neutral: ${neutralStatus}`, infoX + 15, infoY + 55);
+    text(`Heavy: ${heavyStatus}`, infoX + 15, infoY + 80);
+    text(`Heal: ${healStatus}`, infoX + 15, infoY + 105);
+    text(`Special: ${specialStatus}`, infoX + 15, infoY + 130);
+    
+    fill(255, 200, 100);
+    textSize(11);
+    text(`Last move: ${lastMoveUsed || "none"}`, infoX + 15, infoY + 160);
+}
+
+// Draws the player's total damage dealt panel
+function drawDamageInfo() {
+    const infoX = width / 2 - 150;
+    const infoY = height - 100;
+    const infoW = 300;
+    const infoH = 35;
+    
+    fill(0, 0, 0, 180);
+    rect(infoX, infoY, infoW, infoH, 10);
+    
+    fill(230, 200, 143);
+    textSize(12);
+    text(`Your Total Damage: ${playerTotalDamageDealt}`, infoX + infoW/2, infoY + infoH/2);
+}
+
+// ==================== MOUSE CLICK HANDLER ====================
+// Detects clicks on action buttons and triggers the corresponding move
+function mouseClicked() {
+    for (let btn of buttons) {
+        if (mouseX > btn.x && mouseX < btn.x + btn.w && 
+            mouseY > btn.y && mouseY < btn.y + btn.h) {
+            if (!btn.isCD && lastMoveUsed !== btn.action) {
+                performAction(btn.action);
+            } else if (btn.isCD) {
+                statusMessage = `${btn.action.toUpperCase()} on cooldown!`;
+            } else if (lastMoveUsed === btn.action) {
+                statusMessage = `Cannot use ${btn.action} twice in a row!`;
+            }
+            return false;
+        }
+    }
+    return false;
+}
+
+// ==================== WINDOW RESIZE HANDLER ====================
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+}
+
+// ==================== EXPORTS ====================
+export { setup, draw, preload, mouseClicked, windowResized };
