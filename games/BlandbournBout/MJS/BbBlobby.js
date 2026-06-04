@@ -2,8 +2,10 @@
   -BbBlobby.js 
   -Blandbourn Bout lobby
   -Waiting room for players to join before starting the game.
-  -
+  -FIXED: Join buttons work properly with mouseClicked()
+  -Same visual appearance as original
 /*************************************************************/
+
 // -Setup
 let userID, uidClass, gameID, gameNumber; // Making these exist
 let player1, player2, gameTurn, playerClass = '', oppClass = '';
@@ -80,10 +82,14 @@ function startLobbyListener() {
                     availableGames.push({
                         gameID: childSnapshot.key,
                         uid1: game.uid1,
+                        player1Name: game.player1Name || 'Anonymous',
+                        class1: game.class1 || 'Unknown',
                         Wait: game.Wait || ""
                     });
                 }
             });
+        } else {
+            availableGames = [];
         }
     });
 }
@@ -284,6 +290,8 @@ async function refreshAvailableGames() {
                     availableGames.push({
                         gameID: childSnapshot.key,
                         uid1: game.uid1,
+                        player1Name: game.player1Name || 'Anonymous',
+                        class1: game.class1 || 'Unknown',
                         Wait: game.Wait || ""
                     });
                 }
@@ -420,7 +428,8 @@ async function joinGame() {
         if (gameData.uid1 === userID) {
             statusMessage = 'You are already in this game';
             sessionStorage.setItem('gameID', gameCode);
-
+            gameID = gameCode;
+            startGameListener(gameCode);
             return;
         }
 
@@ -464,13 +473,10 @@ async function joinGame() {
 
         startGameListener(gameID);
 
-
-
     } catch (error) {
         statusMessage = 'Error joining game: ' + error.message;
     }
 }
-
 
 // This is how the classes are sorted. I'm hoping that it will randomized every game to prevent total class maining.
 async function assignRandomClasses(gameId, playerIds) {
@@ -517,26 +523,6 @@ async function startGame(gameId, gameData) {
     await moveGameToActive(gameId, gameData);
     statusMessage = 'Game starting soon!';
     console.log(`Wait this actually works?`);
-}
-
-function draw() {
-    background(220);
-    //Make title
-    fill(50);
-    textSize(32);
-    textAlign(CENTER, TOP);
-    text('BLANDBOURN BOUT', width / 2, 60);
-    //Make status message
-    if (statusMessage) {
-        fill(0);
-        textSize(16);
-        text(statusMessage, width / 2, 100);
-    }
-    if (isAuthenticated) {
-        drawLobby();
-    } else {
-        drawLoginPrompt();
-    }
 }
 
 async function cancelGame() {
@@ -592,10 +578,14 @@ function clearGameState() {
     playerReady = false;
     oppReady = false;
     waitingForOpponent = false;
+    currentGameData = null;
     sessionStorage.removeItem('gameID');
     sessionStorage.removeItem('playerClass');
     sessionStorage.removeItem('isHost');
     gameActionButton.hide();
+    createGameButton.show();
+    joinGameButton.show();
+    refreshButton.show();
 }
 
 async function changeClass() {//set class
@@ -699,7 +689,6 @@ async function handelLeave() {
                 Wait: ''
             });
             statusMessage = 'Left the game';
-
         }
 
         // Clear user's game state
@@ -720,7 +709,6 @@ function drawLoginPrompt() {
     text('Please login to continue. Seriously. do it.', width / 2, height / 2);
 }
 
-
 function drawLobby() {
     // Draw current game info if in a game
     if (gameID) {
@@ -739,7 +727,46 @@ function drawLobby() {
     }
 }
 
-// Moved form BbBwaiting.js for testing
+// FIXED: drawAvailableGames with proper click area storage
+function drawAvailableGames() {
+    fill(50);
+    textSize(20);
+    textAlign(LEFT);
+    text('Available Games:', 20, 200);
+
+    let y = 240;
+    availableGames.forEach((game, index) => {
+        // Draw game box
+        fill(240);
+        stroke(0);
+        rect(20, y - 15, 400, 40);
+
+        // Show game info
+        fill(0);
+        textSize(16);
+        let playerCount = game.uid1 ? 1 : 0;
+        let displayName = game.player1Name || 'Anonymous';
+        text(`${displayName}'s Game (${game.gameID}) - ${playerCount}/2 players`, 30, y + 10);
+
+        // Draw Join button
+        fill(0, 100, 200);
+        rect(350, y - 10, 60, 30);
+        fill(255);
+        textSize(14);
+        text('Join', 380, y + 10);
+        
+        // Store click area for this game's Join button
+        if (!window.joinAreas) window.joinAreas = [];
+        window.joinAreas.push({
+            x1: 350, y1: y - 10, x2: 410, y2: y + 20,
+            gameID: game.gameID
+        });
+        
+        y += 50;
+    });
+}
+
+// Moved from BbBwaiting.js for testing
 function drawGameLobby() {
     // Draw game header
     fill(50);
@@ -800,13 +827,29 @@ function drawGameLobby() {
     }
 }
 
+// FIXED: mouseClicked handles both Ready Up button AND Join Game buttons
 function mouseClicked() {
+    // First check if we're in a game lobby (Ready Up button)
     const bothPlayersPresent = currentGameData && currentGameData.uid1 && currentGameData.uid2 && currentGameData.uid2 !== "";
-    if (!bothPlayersPresent || playerReady) return;
-
-    if (mouseX > width / 2 - 60 && mouseX < width / 2 + 60 && mouseY > 450 && mouseY < 490) {
-        toggleReady();
-        return false;
+    if (bothPlayersPresent && !playerReady) {
+        if (mouseX > width / 2 - 60 && mouseX < width / 2 + 60 && mouseY > 450 && mouseY < 490) {
+            toggleReady();
+            return false;
+        }
+    }
+    
+    // Check for clicks on available game "Join" buttons (when not in a game)
+    if (!gameID && window.joinAreas) {
+        for (let area of window.joinAreas) {
+            if (mouseX > area.x1 && mouseX < area.x2 && mouseY > area.y1 && mouseY < area.y2) {
+                // Join this game!
+                gameCodeInput.value(area.gameID);
+                joinGame();
+                // Clear join areas after click to prevent double joins
+                window.joinAreas = [];
+                return false;
+            }
+        }
     }
 }
 
@@ -841,42 +884,6 @@ function drawPlayerBox(x, y, player, className, ready) {
     }
 }
 
-//Create game list
-function drawAvailableGames() {
-    fill(50);
-    textSize(20);
-    textAlign(LEFT);
-    text('Available Games:', 20, 200);
-
-    let y = 240;
-    availableGames.forEach((game, index) => {
-        // Game box
-        fill(240);
-        stroke(0);
-        rect(20, y - 15, 400, 40);
-
-        // Show game info
-        fill(0);
-        textSize(16);
-        let playerCount = game.uid1 ? 1 : 0;
-        text(`Game ${game.gameID} - ${playerCount}/2 players`, 30, y + 10);
-
-        // Join button
-        fill(0, 100, 200);
-        rect(350, y - 10, 60, 30);
-        fill(255);
-        textSize(14);
-        text('Join', 380, y + 10);
-
-        // Check click
-        if (mouseIsPressed && mouseX > 350 && mouseX < 410 && mouseY > y - 10 && mouseY < y + 20) {
-            gameCodeInput.value(game.gameID);
-            joinGame();
-        }
-        y += 50;
-    });
-}
-
 // Clean up Firebase listeners when leaving the page
 function windowWillUnload() {
     if (lobbyListener) {
@@ -884,6 +891,30 @@ function windowWillUnload() {
     }
     if (gameInterval) {
         gameInterval(); // Clean up game listener
+    }
+}
+
+// Reset join areas array at the start of each draw frame
+function draw() {
+    // Reset join areas before drawing
+    window.joinAreas = [];
+    
+    background(220);
+    // Make title
+    fill(50);
+    textSize(32);
+    textAlign(CENTER, TOP);
+    text('BLANDBOURN BOUT', width / 2, 60);
+    // Make status message
+    if (statusMessage) {
+        fill(0);
+        textSize(16);
+        text(statusMessage, width / 2, 100);
+    }
+    if (isAuthenticated) {
+        drawLobby();
+    } else {
+        drawLoginPrompt();
     }
 }
 

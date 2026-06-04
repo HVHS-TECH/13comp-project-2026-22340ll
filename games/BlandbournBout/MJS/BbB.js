@@ -1,8 +1,8 @@
 /*************************************************************
--BbB.js
--OKAY THIS IS THE ACTUAL GAME
--Every game played here is a separate firebase database/string
-*************************************************************/
+ * BbB.js - BLANDBOURN BOUT
+ * OKAY THIS IS THE ACTUAL GAME
+ * Every game played here is a separate firebase database/string
+ *************************************************************/
 
 import {
     fb_initialise, fb_signInWithGoogle,
@@ -177,7 +177,10 @@ async function setupGame() {
     
     // Select a random battleback for this game
     selectedBattleback = random(battlebackImages);
-
+    
+    await loadUserWins();
+    await loadGameData();
+    startGameListener();
 }
 
 // ==================== LOAD USER WINS ====================
@@ -272,6 +275,7 @@ async function loadGameData() {
         if (gameData.playerCooldowns) Object.assign(playerCooldowns, gameData.playerCooldowns);
         if (gameData.opponentCooldowns) Object.assign(opponentCooldowns, gameData.opponentCooldowns);
         if (gameData.lastMoveUsed) lastMoveUsed = gameData.lastMoveUsed;
+        if (gameData.lastActionText) lastActionText = gameData.lastActionText;
         
         statusMessage = myTurn ? "YOUR TURN! Choose an action" : "Opponent's turn... Waiting...";
         
@@ -419,12 +423,17 @@ async function performAction(actionType) {
     let damage = 0;
     let healing = 0;
     let actionLog = "";
+    let newPlayerHP = playerHP;
+    let newOpponentHP = opponentHP;
     let newPlayerEffects = { ...playerEffects }; // "..." avoids mutating the original playerEffects and opponentEffects
     let newOpponentEffects = { ...opponentEffects };
     
     // Calculate damage modifiers from status effects
     let playerDamageBonus = (playerEffects.dmgBuffTurns > 0) ? 10 : 0;
     let opponentDamageReduction = (opponentEffects.weakenTurns > 0) ? 10 : 0;
+    
+    // Check if opponent is blocking
+    let opponentBlocking = opponentEffects.blockRemaining;
     
     // ==================== MOVE LOGIC ====================
     switch(actionType) {
@@ -474,8 +483,25 @@ async function performAction(actionType) {
             }
             break;
     }
-
-       
+    
+    // Apply healing
+    if (healing > 0) {
+        newPlayerHP = Math.min(maxPlayerHP, newPlayerHP + healing);
+    }
+    
+    // Apply damage (account for block)
+    let damageDealtThisTurn = 0;
+    if (damage > 0) {
+        if (opponentBlocking) {
+            actionLog += " Opponent BLOCKED the attack!";
+            newOpponentEffects.blockRemaining = false;
+        } else {
+            newOpponentHP = Math.max(0, newOpponentHP - damage);
+            damageDealtThisTurn = damage;
+            actionLog += ` Dealt ${damage} damage!`;
+        }
+    }
+    
     // ==================== APPLY STATUS EFFECTS ====================
     // Bleed effect (damage over time)
     if (playerEffects.bleedTurns > 0) {
@@ -510,12 +536,8 @@ async function performAction(actionType) {
     if (newOpponentEffects.weakenTurns > 0) newOpponentEffects.weakenTurns--;
     
     // ==================== UPDATE DAMAGE TRACKING ====================
-    let newPlayerDamageTotal = playerTotalDamageDealt;
+    let newPlayerDamageTotal = playerTotalDamageDealt + damageDealtThisTurn;
     let newOpponentDamageTotal = opponentTotalDamageDealt;
-    
-    if (damageDealtThisTurn > 0) {
-        newPlayerDamageTotal += damageDealtThisTurn;
-    }
     
     // Add to battle log
     addToBattleLog(actionLog, "player");
@@ -541,7 +563,7 @@ async function performAction(actionType) {
         if (playerCooldowns[key] > 0) playerCooldowns[key]--;
     }
     
-        // ==================== UPDATE FIREBASE ====================
+    // ==================== UPDATE FIREBASE ====================
     const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
     const updateData = {
         turn: opponentUID,              // Switch turn to opponent
