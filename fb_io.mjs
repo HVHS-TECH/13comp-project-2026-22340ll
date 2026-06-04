@@ -79,6 +79,13 @@ async function fb_signInWithGoogle() {
 function fb_onAuthStateChanged(callback) {
     return onAuthStateChanged(auth, (user) => {
         try {
+            if (user) {
+                sessionStorage.setItem('userID', user.uid || '');
+                sessionStorage.setItem('displayName', user.displayName || '');
+            } else {
+                sessionStorage.removeItem('userID');
+                sessionStorage.removeItem('displayName');
+            }
             callback(user);
         } catch (error) {
             console.error("Auth state callback error:", error);

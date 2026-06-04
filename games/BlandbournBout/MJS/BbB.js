@@ -27,7 +27,8 @@ let currentTurn = null;
 let myTurn = false;
 let gameActive = true;
 let winnerDeclared = false;
-let lastMoveUsed = null;
+let lastMove = null;
+let lastMoveBy = null;
 let gameListener = null;
 let actionInProgress = false;
 let battleLog = [];
@@ -36,7 +37,7 @@ let battleLog = [];
 let playerTotalDamageDealt = 0;
 let opponentTotalDamageDealt = 0;
 
-// Cooldown system (every move takes 2 turns to recharge, special takes 5)
+// Cooldown system (every move takes 3 turns to recharge, special takes 5)
 let playerCooldowns = {
     neutral: 0,
     heavy: 0,
@@ -130,6 +131,7 @@ let opponentUID = null;
 
 // Store user's wins
 let userTotalWins = 0;
+let endGameTimeout = null;
 
 // ==================== P5.js SETUP ====================
 function preload() {
@@ -169,11 +171,36 @@ function setup() {
     });
 }
 
+async function getCurrentUserID() {
+    let uid = sessionStorage.getItem('userID');
+    if (uid) return uid;
+    if (auth.currentUser) return auth.currentUser.uid;
+
+    return new Promise((resolve) => {
+        const unsubscribe = fb_onAuthStateChanged((user) => {
+            unsubscribe();
+            resolve(user ? user.uid : null);
+        });
+    });
+}
+
 // ==================== GAME INITIALIZATION ====================
 // Retrieves game data from sessionStorage and Firebase
 async function setupGame() {
     gameID = sessionStorage.getItem('gameID');
-    userID = sessionStorage.getItem('userID');
+    userID = await getCurrentUserID();
+
+    if (!gameID) {
+        statusMessage = 'Missing game code. Please launch from the lobby.';
+        console.error('No gameID in sessionStorage');
+        return;
+    }
+
+    if (!userID) {
+        statusMessage = 'Not signed in. Please log in and retry.';
+        console.error('No userID found for game', gameID);
+        return;
+    }
     
     // Select a random battleback for this game
     selectedBattleback = random(battlebackImages);
@@ -270,11 +297,26 @@ async function loadGameData() {
         myTurn = (currentTurn === userID);
         
         // Load status effects and cooldowns if they exist
-        if (gameData.playerEffects) Object.assign(playerEffects, gameData.playerEffects);
-        if (gameData.opponentEffects) Object.assign(opponentEffects, gameData.opponentEffects);
-        if (gameData.playerCooldowns) Object.assign(playerCooldowns, gameData.playerCooldowns);
-        if (gameData.opponentCooldowns) Object.assign(opponentCooldowns, gameData.opponentCooldowns);
-        if (gameData.lastMoveUsed) lastMoveUsed = gameData.lastMoveUsed;
+        if (gameData.playerEffects || gameData.opponentEffects) {
+            if (isPlayer1) {
+                if (gameData.playerEffects) Object.assign(playerEffects, gameData.playerEffects);
+                if (gameData.opponentEffects) Object.assign(opponentEffects, gameData.opponentEffects);
+            } else {
+                if (gameData.playerEffects) Object.assign(opponentEffects, gameData.playerEffects);
+                if (gameData.opponentEffects) Object.assign(playerEffects, gameData.opponentEffects);
+            }
+        }
+        if (gameData.playerCooldowns || gameData.opponentCooldowns) {
+            if (isPlayer1) {
+                if (gameData.playerCooldowns) Object.assign(playerCooldowns, gameData.playerCooldowns);
+                if (gameData.opponentCooldowns) Object.assign(opponentCooldowns, gameData.opponentCooldowns);
+            } else {
+                if (gameData.playerCooldowns) Object.assign(opponentCooldowns, gameData.playerCooldowns);
+                if (gameData.opponentCooldowns) Object.assign(playerCooldowns, gameData.opponentCooldowns);
+            }
+        }
+        if (gameData.lastMove) lastMove = gameData.lastMove;
+        if (gameData.lastMoveBy) lastMoveBy = gameData.lastMoveBy;
         if (gameData.lastActionText) lastActionText = gameData.lastActionText;
         
         statusMessage = myTurn ? "YOUR TURN! Choose an action" : "Opponent's turn... Waiting...";
@@ -358,15 +400,30 @@ function updateGameState(gameData) {
     }
     
     // Update status effects
-    if (gameData.playerEffects) Object.assign(playerEffects, gameData.playerEffects);
-    if (gameData.opponentEffects) Object.assign(opponentEffects, gameData.opponentEffects);
+    if (gameData.playerEffects || gameData.opponentEffects) {
+        if (isPlayer1) {
+            if (gameData.playerEffects) Object.assign(playerEffects, gameData.playerEffects);
+            if (gameData.opponentEffects) Object.assign(opponentEffects, gameData.opponentEffects);
+        } else {
+            if (gameData.playerEffects) Object.assign(opponentEffects, gameData.playerEffects);
+            if (gameData.opponentEffects) Object.assign(playerEffects, gameData.opponentEffects);
+        }
+    }
     
     // Update cooldowns
-    if (gameData.playerCooldowns) Object.assign(playerCooldowns, gameData.playerCooldowns);
-    if (gameData.opponentCooldowns) Object.assign(opponentCooldowns, gameData.opponentCooldowns);
+    if (gameData.playerCooldowns || gameData.opponentCooldowns) {
+        if (isPlayer1) {
+            if (gameData.playerCooldowns) Object.assign(playerCooldowns, gameData.playerCooldowns);
+            if (gameData.opponentCooldowns) Object.assign(opponentCooldowns, gameData.opponentCooldowns);
+        } else {
+            if (gameData.playerCooldowns) Object.assign(opponentCooldowns, gameData.playerCooldowns);
+            if (gameData.opponentCooldowns) Object.assign(playerCooldowns, gameData.opponentCooldowns);
+        }
+    }
     
-    // Update last move used
-    if (gameData.lastMoveUsed) lastMoveUsed = gameData.lastMoveUsed;
+    // Update last move info
+    if (gameData.lastMove) lastMove = gameData.lastMove;
+    if (gameData.lastMoveBy) lastMoveBy = gameData.lastMoveBy;
     
     // Update last action text
     if (gameData.lastActionText) {
@@ -381,15 +438,18 @@ function updateGameState(gameData) {
         if (gameData.winner === playerName) {
             saveWinToFirebase();
         }
+        scheduleEndGameReturn();
     } else if (playerHP <= 0 && !winnerDeclared) {
         gameActive = false;
         winnerDeclared = true;
         statusMessage = "You have been defeated!";
+        scheduleEndGameReturn();
     } else if (opponentHP <= 0 && !winnerDeclared) {
         gameActive = false;
         winnerDeclared = true;
         statusMessage = "VICTORY! You won!";
         saveWinToFirebase();
+        scheduleEndGameReturn();
     } else if (gameActive) {
         statusMessage = myTurn ? "YOUR TURN! Choose an action" : "Opponent's turn... Waiting...";
     }
@@ -411,8 +471,8 @@ async function performAction(actionType) {
         return;
     }
     
-    // Prevent using the same move twice in a row
-    if (lastMoveUsed === actionType) {
+    // Prevent using the same move twice in a row by the same player
+    if (lastMoveBy === userID && lastMove === actionType) {
         statusMessage = "You cannot use the same move twice in a row!";
         return;
     }
@@ -441,18 +501,18 @@ async function performAction(actionType) {
             damage = stats.neutral + playerDamageBonus - opponentDamageReduction;
             damage = Math.max(1, damage);  // Minimum 1 damage
             actionLog = `${playerName} uses NEUTRAL ATTACK!`;
-            playerCooldowns.neutral = 2;   // 2 turn cooldown
+            playerCooldowns.neutral = 3;   // 3 turn cooldown
             break;
         case "heavy":
             damage = stats.heavy + playerDamageBonus - opponentDamageReduction;
             damage = Math.max(1, damage);
             actionLog = `${playerName} uses HEAVY STRIKE!`;
-            playerCooldowns.heavy = 2;  //2 turn cooldown
+            playerCooldowns.heavy = 3;  //3 turn cooldown
             break;
         case "heal":
             healing = stats.heal;
             actionLog = `${playerName} uses HEAL! Restored ${healing} HP.`;
-            playerCooldowns.heal = 2;
+            playerCooldowns.heal = 3; // 3 turn cooldown
             break;
         case "special":
             actionLog = `${playerName} uses SPECIAL!`;
@@ -567,12 +627,13 @@ async function performAction(actionType) {
     const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
     const updateData = {
         turn: opponentUID,              // Switch turn to opponent
-        lastMoveUsed: actionType,
+        lastMove: actionType,
+        lastMoveBy: userID,
         lastActionText: actionLog,
-        playerCooldowns: playerCooldowns,
-        opponentCooldowns: opponentCooldowns,
-        playerEffects: newPlayerEffects,
-        opponentEffects: newOpponentEffects
+        playerCooldowns: isPlayer1 ? playerCooldowns : opponentCooldowns,
+        opponentCooldowns: isPlayer1 ? opponentCooldowns : playerCooldowns,
+        playerEffects: isPlayer1 ? newPlayerEffects : newOpponentEffects,
+        opponentEffects: isPlayer1 ? newOpponentEffects : newPlayerEffects
     };
     
     // Update health and damage fields based on player slot
@@ -603,6 +664,10 @@ async function performAction(actionType) {
     currentTurn = opponentUID;
     myTurn = false;
     actionInProgress = false;
+
+    if (winner) {
+        scheduleEndGameReturn();
+    }
 }
 
 // ==================== BATTLE LOG ====================
@@ -627,29 +692,53 @@ async function saveWinToFirebase() {
         
         let currentWins = 0;
         let currentDamage = 0;
+        let previousBest = 0;
         
         if (snapshot.exists()) {
             const userData = snapshot.val();
             currentWins = userData.wins || 0;
             currentDamage = userData.totalDamage || 0;
+            previousBest = userData.highestTotalDamage || 0;
         }
         
         const newWins = currentWins + 1;
         const newDamage = currentDamage + playerTotalDamageDealt;
+        const bestDamage = Math.max(previousBest, playerTotalDamageDealt);
         
         await update(userRef, {
             wins: newWins,
             totalDamage: newDamage,
+            highestTotalDamage: bestDamage,
             lastWinDate: new Date().toISOString()
         });
         
         userTotalWins = newWins;
-        console.log(`Win saved! ${playerName} now has ${newWins} wins`);
+        console.log(`Win saved! ${playerName} now has ${newWins} wins and highest total damage ${bestDamage}`);
         addToBattleLog(`${playerName} now has ${newWins} total wins!`, "system");
+        addToBattleLog(`Best damage record: ${bestDamage}`, "system");
         
     } catch (error) {
         console.error('Error saving win to users:', error);
     }
+}
+
+function cleanupEndGameSession() {
+    try {
+        sessionStorage.removeItem('gameID');
+        sessionStorage.removeItem('playerClass');
+        sessionStorage.removeItem('isHost');
+    } catch (error) {
+        console.warn('Could not clean up session storage:', error);
+    }
+}
+
+function scheduleEndGameReturn() {
+    if (endGameTimeout) return;
+    statusMessage = 'Game over. Returning to lobby...';
+    endGameTimeout = setTimeout(() => {
+        cleanupEndGameSession();
+        window.location.href = 'BbBlobby.html';
+    }, 4000);
 }
 
 // ==================== DRAW FUNCTIONS ====================
@@ -924,7 +1013,8 @@ function drawCooldownInfo() {
     
     fill(255, 200, 100);
     textSize(11);
-    text(`Last move: ${lastMoveUsed || "none"}`, infoX + 15, infoY + 160);
+    const lastMoveDisplay = lastMove ? `${lastMove} (${lastMoveBy === userID ? 'you' : 'opponent'})` : 'none';
+    text(`Last move: ${lastMoveDisplay}`, infoX + 15, infoY + 160);
 }
 
 // Draws the player's total damage dealt panel
@@ -948,11 +1038,11 @@ function mouseClicked() {
     for (let btn of buttons) {
         if (mouseX > btn.x && mouseX < btn.x + btn.w && 
             mouseY > btn.y && mouseY < btn.y + btn.h) {
-            if (!btn.isCD && lastMoveUsed !== btn.action) {
+            if (!btn.isCD && !(lastMoveBy === userID && lastMove === btn.action)) {
                 performAction(btn.action);
             } else if (btn.isCD) {
                 statusMessage = `${btn.action.toUpperCase()} on cooldown!`;
-            } else if (lastMoveUsed === btn.action) {
+            } else if (lastMoveBy === userID && lastMove === btn.action) {
                 statusMessage = `Cannot use ${btn.action} twice in a row!`;
             }
             return false;
@@ -967,4 +1057,9 @@ function windowResized() {
 }
 
 // ==================== EXPORTS ====================
+window.preload = preload;
+window.setup = setup;
+window.draw = draw;
+window.mouseClicked = mouseClicked;
+window.windowResized = windowResized;
 export { setup, draw, preload, mouseClicked, windowResized };

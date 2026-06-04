@@ -70,21 +70,19 @@ function preload() { //Preload everyting for further purposes.
 }
 
 function startLobbyListener() {
-    //Listen to gameScore/BbB path
-    const gamesRef = ref(database, 'gameScore/BbB');
+    // Listen for waiting games only
+    const gamesRef = ref(database, 'gameScore/BbB/Wait');
     lobbyListener = onValue(gamesRef, (snapshot) => {
         if (snapshot.exists()) {
             availableGames = [];
             snapshot.forEach((childSnapshot) => {
                 const game = childSnapshot.val();
-                // Check for waiting games
-                if (game.uid1 && (!game.uid2 || game.uid2 === "") && !game.gameOn) {
+                if (game && game.uid1 && (!game.uid2 || game.uid2 === "") && game.gameOn !== true) {
                     availableGames.push({
                         gameID: childSnapshot.key,
                         uid1: game.uid1,
                         player1Name: game.player1Name || 'Anonymous',
-                        class1: game.class1 || 'Unknown',
-                        Wait: game.Wait || ""
+                        class1: game.class1 || 'Unknown'
                     });
                 }
             });
@@ -111,6 +109,11 @@ function startGameListener(gameId) {
         currentGameData = gameData;
         gameID = gameId;
         waitingForOpponent = true;
+        // Hide create/join controls when arriving at a waiting game
+        if (createGameButton) createGameButton.hide();
+        if (joinGameButton) joinGameButton.hide();
+        if (gameCodeInput) gameCodeInput.hide();
+        if (refreshButton) refreshButton.hide();
 
         if (auth.currentUser) {
             userID = auth.currentUser.uid;
@@ -249,6 +252,11 @@ function setupUI() {
     createGameButton.position(20, 110);
     createGameButton.mousePressed(createNewGame);
     createGameButton.hide();
+    // Prevent creating/joining while waiting for opponent
+    if (joinGameButton) joinGameButton.hide();
+    if (gameCodeInput) gameCodeInput.hide();
+    if (refreshButton) refreshButton.hide();
+    if (usernameInput) usernameInput.hide();
 
     joinGameButton = createButton('Join Game');
     joinGameButton.position(150, 110);
@@ -277,22 +285,21 @@ async function refreshAvailableGames() {
     if (!isAuthenticated) return;
 
     try {
-        // Use correct path gameScore/BbB
-        const gamesRef = ref(database, 'gameScore/BbB');
+        // Query waiting games directly so only joinable codes are shown
+        const gamesRef = ref(database, 'gameScore/BbB/Wait');
         const snapshot = await get(gamesRef);
 
         if (snapshot.exists()) {
             availableGames = [];
             snapshot.forEach((childSnapshot) => {
                 const game = childSnapshot.val();
-                // Check for waiting games (has uid1 but no uid2, and game not active)
-                if (game.uid1 && (!game.uid2 || game.uid2 === "") && !game.gameOn) {
+                // Only include games that have a host and are not full
+                if (game && game.uid1 && (!game.uid2 || game.uid2 === "") && game.gameOn !== true) {
                     availableGames.push({
                         gameID: childSnapshot.key,
                         uid1: game.uid1,
                         player1Name: game.player1Name || 'Anonymous',
-                        class1: game.class1 || 'Unknown',
-                        Wait: game.Wait || ""
+                        class1: game.class1 || 'Unknown'
                     });
                 }
             });
@@ -325,7 +332,7 @@ function checkAuthState() { // Check authentication state and set up listener
     });
 }
 
-async function createNewGame() {
+async function createNewGame() { // Create a new game and set up initial state in Firebase
     if (!isAuthenticated || !auth.currentUser) {
         statusMessage = 'Please login first';
         console.log('your not supposed to be here yet.');
@@ -465,6 +472,13 @@ async function joinGame() {
         gameID = gameCode;
         playerClass = randomClass;
         waitingForOpponent = true;
+
+        // Hide create/join controls while waiting
+        if (createGameButton) createGameButton.hide();
+        if (joinGameButton) joinGameButton.hide();
+        if (gameCodeInput) gameCodeInput.hide();
+        if (refreshButton) refreshButton.hide();
+        if (usernameInput) usernameInput.hide();
 
         // Show game action button
         gameActionButton.show();
@@ -729,7 +743,7 @@ function drawLobby() {
 
 // FIXED: drawAvailableGames with proper click area storage
 function drawAvailableGames() {
-    fill(50);
+    fill(15);
     textSize(20);
     textAlign(LEFT);
     text('Available Games:', 20, 200);
@@ -899,9 +913,9 @@ function draw() {
     // Reset join areas before drawing
     window.joinAreas = [];
     
-    background(220);
+    background(255);
     // Make title
-    fill(50);
+    fill(15);
     textSize(32);
     textAlign(CENTER, TOP);
     text('BLANDBOURN BOUT', width / 2, 60);
