@@ -258,8 +258,8 @@ async function loadGameData() {
         if (gameData.uid1 === userID) {
             // User is player 1
             isPlayer1 = true;
-            playerClass = gameData.class1;
-            opponentClass = gameData.class2;
+            playerClass = String(gameData.class1 || "").trim();
+            opponentClass = String(gameData.class2 || "").trim();
             opponentName = gameData.player2Name || "Opponent";
             playerName = gameData.player1Name || auth.currentUser?.displayName || "Player";
             opponentUID = gameData.uid2;
@@ -271,8 +271,8 @@ async function loadGameData() {
         } else if (gameData.uid2 === userID) {
             // User is player 2
             isPlayer1 = false;
-            playerClass = gameData.class2;
-            opponentClass = gameData.class1;
+            playerClass = String(gameData.class2 || "").trim();
+            opponentClass = String(gameData.class1 || "").trim();
             opponentName = gameData.player1Name || "Opponent";
             playerName = gameData.player2Name || auth.currentUser?.displayName || "Player";
             opponentUID = gameData.uid1;
@@ -917,13 +917,13 @@ function drawPlayerCard(isPlayer, x, y, w, h) {
 
 // Draws the four action buttons (Neutral, Heavy, Heal, Special)
 function drawActionButtons() {
-    if (!playerClass || !CLASS_STATS[playerClass]) {
-        return;
-    }
-    const stats = CLASS_STATS[playerClass];
-    if (!stats) {
-        return;
-    }
+    const stats = CLASS_STATS[playerClass] || {
+        neutral: 0,
+        heavy: 0,
+        heal: 0,
+        specialDesc: "UNKNOWN",
+        special: "none"
+    };
     const btnY = height - 140;
     const btnW = 150;
     const btnH = 55;
