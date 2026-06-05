@@ -132,6 +132,7 @@ let opponentUID = null;
 // Store user's wins
 let userTotalWins = 0;
 let endGameTimeout = null;
+const LOBBY_PAGE = 'BbBlobby.html';
 
 // ==================== P5.js SETUP ====================
 function preload() {
@@ -241,10 +242,16 @@ async function loadGameData() {
         if (!snapshot.exists()) {
             statusMessage = "Game not found!";
             console.error(`Game ${gameID} not found`);
+            redirectToLobby(1500);
             return;
         }
         
         const gameData = snapshot.val();
+        if (!gameData.uid1 || !gameData.uid2 || gameData.uid1 === "" || gameData.uid2 === "") {
+            statusMessage = "Opponent left or game invalid. Returning to lobby...";
+            redirectToLobby(2000);
+            return;
+        }
         console.log('Game data loaded:', gameData);
         
         // Determine which player slot the current user occupies
@@ -358,7 +365,8 @@ function startGameListener() {
     const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
     gameListener = onValue(gameRef, (snapshot) => {
         if (!snapshot.exists()) {
-            statusMessage = "Game no longer exists";
+            statusMessage = "Game no longer exists. Returning to lobby...";
+            redirectToLobby(1500);
             return;
         }
         
@@ -372,6 +380,12 @@ function startGameListener() {
 function updateGameState(gameData) {
     if (winnerDeclared && gameActive === false) return;
     
+    if (!gameData.uid1 || !gameData.uid2 || gameData.uid1 === "" || gameData.uid2 === "") {
+        statusMessage = "Opponent left. Returning to lobby...";
+        redirectToLobby(2000);
+        return;
+    }
+
     // Update player HP from the appropriate Firebase field
     if (isPlayer1) {
         if (gameData.uid1health !== undefined && gameData.uid1health !== playerHP) {
@@ -732,13 +746,20 @@ function cleanupEndGameSession() {
     }
 }
 
+function redirectToLobby(delayMs = 1000) {
+    if (endGameTimeout) {
+        clearTimeout(endGameTimeout);
+    }
+    endGameTimeout = setTimeout(() => {
+        cleanupEndGameSession();
+        window.location.href = LOBBY_PAGE;
+    }, delayMs);
+}
+
 function scheduleEndGameReturn() {
     if (endGameTimeout) return;
     statusMessage = 'Game over. Returning to lobby...';
-    endGameTimeout = setTimeout(() => {
-        cleanupEndGameSession();
-        window.location.href = 'BbBlobby.html';
-    }, 4000);
+    redirectToLobby(4000);
 }
 
 // ==================== DRAW FUNCTIONS ====================
@@ -791,8 +812,8 @@ function draw() {
     drawPlayerCard(true, 80, 160, 500, 380);   // Player card (left)
     drawPlayerCard(false, width - 580, 160, 500, 380); // Opponent card (right)
     
-    // Draw action buttons only if it's player's turn and game is active
-    if (myTurn && gameActive && !winnerDeclared) {
+    // Draw action buttons when the game is active so the forfeit button is always visible
+    if (gameActive && !winnerDeclared) {
         drawActionButtons();
     }
     
@@ -899,7 +920,8 @@ function drawActionButtons() {
     // ===== NEUTRAL BUTTON =====
     let btnX = startX;
     let isNeutralCD = playerCooldowns.neutral > 0;
-    fill(isNeutralCD ? 80 : 74, 106, 138);
+    let neutralDisabled = !myTurn || isNeutralCD;
+    fill(neutralDisabled ? 80 : 74, 106, 138);
     rect(btnX, btnY, btnW, btnH, 12);
     fill(255);
     textSize(15);
@@ -909,13 +931,18 @@ function drawActionButtons() {
     if (isNeutralCD) {
         fill(255, 100, 100);
         text(`CD: ${playerCooldowns.neutral}`, btnX + btnW/2, btnY + btnH - 12);
+    } else if (!myTurn) {
+        fill(255, 150);
+        textSize(11);
+        text(`WAITING...`, btnX + btnW/2, btnY + btnH - 12);
     }
-    buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "neutral", isCD: isNeutralCD });
+    buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "neutral", isCD: neutralDisabled });
     
     // ===== HEAVY BUTTON =====
     btnX += btnW + spacing;
     let isHeavyCD = playerCooldowns.heavy > 0;
-    fill(isHeavyCD ? 80 : 138, 74, 74);
+    let heavyDisabled = !myTurn || isHeavyCD;
+    fill(heavyDisabled ? 80 : 138, 74, 74);
     rect(btnX, btnY, btnW, btnH, 12);
     fill(255);
     text("HEAVY", btnX + btnW/2, btnY + btnH/2 - 8);
@@ -923,13 +950,18 @@ function drawActionButtons() {
     if (isHeavyCD) {
         fill(255, 100, 100);
         text(`CD: ${playerCooldowns.heavy}`, btnX + btnW/2, btnY + btnH - 12);
+    } else if (!myTurn) {
+        fill(255, 150);
+        textSize(11);
+        text(`WAITING...`, btnX + btnW/2, btnY + btnH - 12);
     }
-    buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "heavy", isCD: isHeavyCD });
+    buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "heavy", isCD: heavyDisabled });
     
     // ===== HEAL BUTTON =====
     btnX += btnW + spacing;
     let isHealCD = playerCooldowns.heal > 0;
-    fill(isHealCD ? 80 : 74, 138, 94);
+    let healDisabled = !myTurn || isHealCD;
+    fill(healDisabled ? 80 : 74, 138, 94);
     rect(btnX, btnY, btnW, btnH, 12);
     fill(255);
     text("HEAL", btnX + btnW/2, btnY + btnH/2 - 8);
@@ -937,13 +969,18 @@ function drawActionButtons() {
     if (isHealCD) {
         fill(255, 100, 100);
         text(`CD: ${playerCooldowns.heal}`, btnX + btnW/2, btnY + btnH - 12);
+    } else if (!myTurn) {
+        fill(255, 150);
+        textSize(11);
+        text(`WAITING...`, btnX + btnW/2, btnY + btnH - 12);
     }
-    buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "heal", isCD: isHealCD });
+    buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "heal", isCD: healDisabled });
     
     // ===== SPECIAL BUTTON =====
     btnX += btnW + spacing;
     let isSpecialCD = playerCooldowns.special > 0;
-    fill(isSpecialCD ? 80 : 138, 106, 58);
+    let specialDisabled = !myTurn || isSpecialCD;
+    fill(specialDisabled ? 80 : 138, 106, 58);
     rect(btnX, btnY, btnW, btnH, 12);
     fill(255);
     textSize(13);
@@ -954,8 +991,25 @@ function drawActionButtons() {
         fill(255, 100, 100);
         textSize(11);
         text(`CD: ${playerCooldowns.special}`, btnX + btnW/2, btnY + btnH - 10);
+    } else if (!myTurn) {
+        fill(255, 150);
+        textSize(11);
+        text(`WAITING...`, btnX + btnW/2, btnY + btnH - 10);
     }
-    buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "special", isCD: isSpecialCD });
+    buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "special", isCD: specialDisabled });
+
+    // ===== FORFEIT BUTTON =====
+    const forfeitBtnW = 200;
+    const forfeitBtnX = width / 2 - forfeitBtnW / 2;
+    const forfeitBtnY = btnY + btnH + 20;
+    fill(180, 60, 60);
+    rect(forfeitBtnX, forfeitBtnY, forfeitBtnW, btnH, 12);
+    fill(255);
+    textSize(15);
+    text("FORFEIT", forfeitBtnX + forfeitBtnW / 2, forfeitBtnY + btnH / 2 - 8);
+    textSize(12);
+    text("Give opponent the win", forfeitBtnX + forfeitBtnW / 2, forfeitBtnY + btnH / 2 + 12);
+    buttons.push({ x: forfeitBtnX, y: forfeitBtnY, w: forfeitBtnW, h: btnH, action: "forfeit", isCD: false });
 }
 
 // Draws the battle log panel showing recent actions
@@ -1038,10 +1092,20 @@ function mouseClicked() {
     for (let btn of buttons) {
         if (mouseX > btn.x && mouseX < btn.x + btn.w && 
             mouseY > btn.y && mouseY < btn.y + btn.h) {
-            if (!btn.isCD && !(lastMoveBy === userID && lastMove === btn.action)) {
+            if (btn.action === "forfeit") {
+                if (!gameActive || winnerDeclared) {
+                    statusMessage = "Game is already over.";
+                } else {
+                    forfeitGame();
+                }
+            } else if (!btn.isCD && !(lastMoveBy === userID && lastMove === btn.action)) {
                 performAction(btn.action);
             } else if (btn.isCD) {
-                statusMessage = `${btn.action.toUpperCase()} on cooldown!`;
+                if (!myTurn) {
+                    statusMessage = "Wait for your turn or forfeit the game.";
+                } else {
+                    statusMessage = `${btn.action.toUpperCase()} on cooldown!`;
+                }
             } else if (lastMoveBy === userID && lastMove === btn.action) {
                 statusMessage = `Cannot use ${btn.action} twice in a row!`;
             }
@@ -1052,6 +1116,33 @@ function mouseClicked() {
 }
 
 // ==================== WINDOW RESIZE HANDLER ====================
+async function forfeitGame() {
+    if (!gameID || !userID || !gameActive || winnerDeclared) {
+        statusMessage = "Cannot forfeit now.";
+        return;
+    }
+
+    try {
+        const winnerName = opponentName || "Opponent";
+        const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
+        await update(gameRef, {
+            winner: winnerName,
+            gameActive: false,
+            lastActionText: `${playerName} forfeited. ${winnerName} wins!`,
+            lastMove: 'forfeit',
+            lastMoveBy: userID
+        });
+        addToBattleLog(`${playerName} forfeited. ${winnerName} wins!`, "system");
+        gameActive = false;
+        winnerDeclared = true;
+        statusMessage = "You forfeited. Returning to lobby...";
+        scheduleEndGameReturn();
+    } catch (error) {
+        console.error('Error forfeiting game:', error);
+        statusMessage = "Error processing forfeit.";
+    }
+}
+
 function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
 }
