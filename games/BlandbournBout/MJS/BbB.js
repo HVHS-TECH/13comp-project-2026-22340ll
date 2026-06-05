@@ -82,12 +82,12 @@ const CLASS_STATS = {
         hp: 110,           // Low HP, high healing
         neutral: 15, 
         heavy: 20, 
-        heal: 45, 
+        heal: 40, 
         special: "passiveHeal", 
         specialDesc: "Passive heal: +10 HP for 3 turns"
     },
     Spartan: { 
-        hp: 150,           // High HP, damage buff special
+        hp: 130,           // High HP, damage buff special
         neutral: 20, 
         heavy: 30, 
         heal: 25, 
@@ -98,15 +98,15 @@ const CLASS_STATS = {
         hp: 125,           // Balanced, block special
         neutral: 15, 
         heavy: 25, 
-        heal: 35, 
+        heal: 30, 
         special: "block", 
         specialDesc: "Block: Negate next attack"
     },
     Wizard: { 
         hp: 90,            // Low HP, high neutral damage, weaken special
         neutral: 35, 
-        heavy: 10, 
-        heal: 35, 
+        heavy: 15, 
+        heal: 30, 
         special: "weaken", 
         specialDesc: "Weaken: Reduce enemy damage by 10 for 3 turns"
     }
