@@ -832,11 +832,11 @@ function draw() {
 
 // Draws a player card with HP bar, class image, name, and status effects
 function drawPlayerCard(isPlayer, x, y, w, h) {
-    const className = isPlayer ? playerClass : opponentClass;
+    const className = isPlayer ? (playerClass || 'default') : (opponentClass || 'default');
     const hp = isPlayer ? playerHP : opponentHP;
-    const maxHp = isPlayer ? maxPlayerHP : maxOpponentHP;
+    const maxHp = isPlayer ? (maxPlayerHP || 100) : (maxOpponentHP || 100);
     const name = isPlayer ? playerName : opponentName;
-    const effects = isPlayer ? playerEffects : opponentEffects;
+    const effects = isPlayer ? (playerEffects || {}) : (opponentEffects || {});
     const totalDamage = isPlayer ? playerTotalDamageDealt : opponentTotalDamageDealt;
     
     // Card background (different colors for player vs opponent)
@@ -908,6 +908,9 @@ function drawPlayerCard(isPlayer, x, y, w, h) {
 
 // Draws the four action buttons (Neutral, Heavy, Heal, Special)
 function drawActionButtons() {
+    if (!playerClass || !CLASS_STATS[playerClass]) {
+        return;
+    }
     const stats = CLASS_STATS[playerClass];
     const btnY = height - 140;
     const btnW = 150;
