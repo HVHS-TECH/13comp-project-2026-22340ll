@@ -803,6 +803,15 @@ function draw() {
     textSize(18);
     text(statusMessage, width / 2, 98);
     
+    // Ensure game data is ready before drawing the main battle UI
+    if (!playerClass || !CLASS_STATS[playerClass] || !playerName) {
+        background(20, 25, 45);
+        fill(230, 200, 143);
+        textSize(26);
+        text(statusMessage || "Loading battle...", width / 2, height / 2);
+        return;
+    }
+
     // VS text between player cards
     fill(230, 200, 143);
     textSize(52);
@@ -912,6 +921,9 @@ function drawActionButtons() {
         return;
     }
     const stats = CLASS_STATS[playerClass];
+    if (!stats) {
+        return;
+    }
     const btnY = height - 140;
     const btnW = 150;
     const btnH = 55;
