@@ -74,7 +74,7 @@ const CLASS_STATS = {
         hp: 75,           // Glass Cannon (thanks william), high damage, sluggish healing
         neutral: 40, 
         heavy: 55, 
-        heal: 20, 
+        heal: 30, 
         special: "bleed", 
         specialDesc: "Bleed: 5 damage for 3 turns"
     },
@@ -90,7 +90,7 @@ const CLASS_STATS = {
         hp: 130,           // High HP, damage buff special
         neutral: 20, 
         heavy: 30, 
-        heal: 25, 
+        heal: 20, 
         special: "dmgBuff", 
         specialDesc: "Damage buff: +10 damage for 3 turns"
     },
@@ -98,7 +98,7 @@ const CLASS_STATS = {
         hp: 125,           // Balanced, block special
         neutral: 15, 
         heavy: 25, 
-        heal: 30, 
+        heal: 25, 
         special: "block", 
         specialDesc: "Block: Negate next attack"
     },
@@ -108,7 +108,7 @@ const CLASS_STATS = {
         heavy: 15, 
         heal: 30, 
         special: "weaken", 
-        specialDesc: "Weaken: Reduce enemy damage by 10 for 3 turns"
+        specialDesc: "Weaken: Reduce enemy damage by 15 for 3 turns"
     }
 };
 
