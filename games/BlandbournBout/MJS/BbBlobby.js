@@ -19,8 +19,11 @@ let loginButton, getoutButton, createGameButton, joinGameButton, gameCodeInput, 
 let gameActionButton, usernameInput;
 // Declare other variables
 let statusMessage, isAuthenticated, isAdmin;
-let currentPlayer, opponentPlayer, currentgameName = '', opponentgameName = ''; 
+let currentPlayer, opponentPlayer, currentgameName = '', opponentgameName = '';
 let currentGameData = null, gameInterval, lobbyListener;
+let userTotalWins = 0;
+let userHighestDamage = 0;
+let userTotalDamage = 0;
 
 console.log("Authenticate Please");
 
@@ -28,7 +31,7 @@ import {
     fb_initialise, fb_signInWithGoogle,
     fb_onAuthStateChanged, fb_authChanged,
     fb_signOut, fb_checkAdminStatus,
-    auth,database, ref, set, get,
+    auth, database, ref, set, get,
     onValue, update
 } from '../../../fb_io.mjs';
 
@@ -141,7 +144,7 @@ function startGameListener(gameId) {
         const bothPlayersPresent = gameData.uid1 && gameData.uid2 && gameData.uid2 !== "";
         // Ensure players object exists; if not, create default entries
         if (bothPlayersPresent && !gameData.players) {
-            const playersPayload = {}; 
+            const playersPayload = {};
             playersPayload[gameData.uid1] = {
                 ready: false,
                 class: gameData.class1 || playerClass,
@@ -167,7 +170,7 @@ function startGameListener(gameId) {
             console.log(`Starting game ${gameId} because both players are ready.`);
             try {
                 sessionStorage.setItem('gameID', gameId);
-            } catch (e) {}
+            } catch (e) { }
             window.location.href = 'BbBgame.html';
             return;
         }
@@ -176,7 +179,7 @@ function startGameListener(gameId) {
         if (gameData.gameOn) {
             try {
                 sessionStorage.setItem('gameID', gameId);
-            } catch (e) {}
+            } catch (e) { }
             window.location.href = 'BbBgame.html';
         }
 
@@ -321,15 +324,49 @@ function checkAuthState() { // Check authentication state and set up listener
             isAuthenticated = true;
             userID = user.uid;
             isAdmin = await fb_checkAdminStatus(user.uid);
+            await loadUserStats();
             updateUIForAuth(true);
             startLobbyListener();
         } else {
             isAuthenticated = false;
             userID = null;
             isAdmin = false;
+            userTotalWins = 0;
+            userHighestDamage = 0;
+            userTotalDamage = 0;
             updateUIForAuth(false);
         }
     });
+}
+
+async function loadUserStats() { // It's in the name. Load UID stats
+    if (!userID) return;
+
+    try {
+        const userRef = ref(database, `users/${userID}`);
+        const snapshot = await get(userRef);
+
+        if (snapshot.exists()) {
+            const userData = snapshot.val();
+            userTotalWins = userData.wins || 0;
+            userTotalDamage = userData.totalDamage || 0;
+            userHighestDamage = userData.highestTotalDamage || 0;
+        } else {
+            userTotalWins = 0;
+            userTotalDamage = 0;
+            userHighestDamage = 0;
+            await update(userRef, {
+                wins: 0,
+                totalDamage: 0,
+                highestTotalDamage: 0
+            });
+        }
+    } catch (error) {
+        console.error('Error loading user stats:', error);
+        userTotalWins = 0;
+        userTotalDamage = 0;
+        userHighestDamage = 0;
+    }
 }
 
 async function createNewGame() { // Create a new game and set up initial state in Firebase
@@ -338,7 +375,7 @@ async function createNewGame() { // Create a new game and set up initial state i
         console.log('your not supposed to be here yet.');
         return;
     }
-    
+
     createGameButton.hide();
 
     const username = usernameInput.value() || auth.currentUser.displayName || 'Player';
@@ -571,7 +608,7 @@ async function cancelGame() {
                 Wait: '',
                 statusMessage: 'Left the game'
             });
-            
+
         }
 
         // Clear user's game state
@@ -731,6 +768,8 @@ function drawLobby() {
         drawAvailableGames();
     }
 
+    drawLeaderboard();
+
     // Draw userID info
     fill(0);
     textSize(14);
@@ -768,14 +807,14 @@ function drawAvailableGames() {
         fill(255);
         textSize(14);
         text('Join', 380, y + 10);
-        
+
         // Store click area for this game's Join button
         if (!window.joinAreas) window.joinAreas = [];
         window.joinAreas.push({
             x1: 350, y1: y - 10, x2: 410, y2: y + 20,
             gameID: game.gameID
         });
-        
+
         y += 50;
     });
 }
@@ -841,7 +880,33 @@ function drawGameLobby() {
     }
 }
 
-// FIXED: mouseClicked handles both Ready Up button AND Join Game buttons
+function drawLeaderboard() { //Leaderbored
+    const boardW = 500;
+    const boardH = 300;
+    const boardX = width / 2 - boardW / 2;
+    const boardY = 140;
+
+    fill(245);
+    stroke(30);
+    strokeWeight(2);
+    rect(boardX, boardY, boardW, boardH, 20);
+
+    noStroke();
+    fill(20);
+    textSize(18);
+    textStyle(BOLD);
+    text('Leaderboard', width / 2.15, boardY + 28);
+
+    textStyle(NORMAL);
+    textSize(14);
+    fill(40);
+    text(`User: ${userID}`, width / 2.15, boardY + 52)
+    text(`Wins: ${userTotalWins}`, width / 2.15, boardY + 74);
+    text(`Highest Damage: ${userHighestDamage}`, width / 2.15, boardY + 96);
+    text(`Total Damage: ${userTotalDamage}`, width / 2.15, boardY + 118);
+}
+
+// mouseClicked handles both Ready Up button AND Join Game buttons
 function mouseClicked() {
     // First check if we're in a game lobby (Ready Up button)
     const bothPlayersPresent = currentGameData && currentGameData.uid1 && currentGameData.uid2 && currentGameData.uid2 !== "";
@@ -851,7 +916,7 @@ function mouseClicked() {
             return false;
         }
     }
-    
+
     // Check for clicks on available game "Join" buttons (when not in a game)
     if (!gameID && window.joinAreas) {
         for (let area of window.joinAreas) {
@@ -912,7 +977,7 @@ function windowWillUnload() {
 function draw() {
     // Reset join areas before drawing
     window.joinAreas = [];
-    
+
     background(255);
     // Make title
     fill(15);

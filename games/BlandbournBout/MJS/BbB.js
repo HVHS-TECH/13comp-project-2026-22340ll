@@ -70,44 +70,44 @@ let opponentEffects = {
 // ==================== CLASS STATISTICS ====================
 // Each class has different HP, move damage, healing, and special ability
 const CLASS_STATS = {
-    Barbarian: { 
+    Barbarian: {
         hp: 75,           // Glass Cannon (thanks william), high damage, sluggish healing
-        neutral: 40, 
-        heavy: 55, 
-        heal: 30, 
-        special: "bleed", 
+        neutral: 40,
+        heavy: 55,
+        heal: 30,
+        special: "bleed",
         specialDesc: "Bleed: 5 damage for 3 turns"
     },
-    Cleric: { 
+    Cleric: {
         hp: 110,           // Low HP, high healing
-        neutral: 15, 
-        heavy: 20, 
-        heal: 40, 
-        special: "passiveHeal", 
+        neutral: 15,
+        heavy: 20,
+        heal: 40,
+        special: "passiveHeal",
         specialDesc: "Passive heal: +10 HP for 3 turns"
     },
-    Spartan: { 
+    Spartan: {
         hp: 130,           // High HP, damage buff special
-        neutral: 20, 
-        heavy: 30, 
-        heal: 20, 
-        special: "dmgBuff", 
+        neutral: 20,
+        heavy: 30,
+        heal: 20,
+        special: "dmgBuff",
         specialDesc: "Damage buff: +10 damage for 3 turns"
     },
-    Paladin: { 
+    Paladin: {
         hp: 125,           // Balanced, block special
-        neutral: 15, 
-        heavy: 25, 
-        heal: 25, 
-        special: "block", 
+        neutral: 15,
+        heavy: 25,
+        heal: 25,
+        special: "block",
         specialDesc: "Block: Negate next attack"
     },
-    Wizard: { 
+    Wizard: {
         hp: 90,            // Low HP, high neutral damage, weaken special
-        neutral: 35, 
-        heavy: 15, 
-        heal: 30, 
-        special: "weaken", 
+        neutral: 35,
+        heavy: 15,
+        heal: 30,
+        special: "weaken",
         specialDesc: "Weaken: Reduce enemy damage by 15 for 3 turns"
     }
 };
@@ -139,7 +139,7 @@ function preload() {
     imgPlaceholder = loadImage('../other/images.jpg');
     battlebackImages = [         // All backgrounds credit to Gabriel 'Nidhoggn' de Aguiar
         loadImage('../other/battleback1.png'), // (https://opengameart.org/users/nidhoggn)
-        loadImage('../other/battleback2.png'), 
+        loadImage('../other/battleback2.png'),
         loadImage('../other/battleback3.png'),
         loadImage('../other/battleback9.png'),
         loadImage('../other/battleback10.png')
@@ -149,7 +149,7 @@ function preload() {
     imgPaladin = loadImage('../other/BbBPal.png');
     imgBarbarian = loadImage('../other/BbBBarb.png');
     imgCleric = loadImage('../other/BbBCler.png');
-        
+
     classImages = {
         'Spartan': imgSpartan,
         'Wizard': imgWizard,
@@ -165,7 +165,7 @@ function setup() {
     textFont('monospace');
     textAlign(CENTER, CENTER);
     rectMode(CORNER);
-    
+
     fb_initialise().then(() => {
         console.log('Firebase initialized for game');
         setupGame();
@@ -202,10 +202,10 @@ async function setupGame() {
         console.error('No userID found for game', gameID);
         return;
     }
-    
+
     // Select a random battleback for this game
     selectedBattleback = random(battlebackImages);
-    
+
     await loadUserWins();
     await loadGameData();
     startGameListener();
@@ -217,7 +217,7 @@ async function loadUserWins() {
     try {
         const userRef = ref(database, `users/${userID}`);
         const snapshot = await get(userRef);
-        
+
         if (snapshot.exists()) {
             const userData = snapshot.val();
             userTotalWins = userData.wins || 0;
@@ -238,14 +238,14 @@ async function loadGameData() {
     try {
         const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
         const snapshot = await get(gameRef);
-        
+
         if (!snapshot.exists()) {
             statusMessage = "Game not found!";
             console.error(`Game ${gameID} not found`);
             redirectToLobby(1500);
             return;
         }
-        
+
         const gameData = snapshot.val();
         if (!gameData.uid1 || !gameData.uid2 || gameData.uid1 === "" || gameData.uid2 === "") {
             statusMessage = "Opponent left or game invalid. Returning to lobby...";
@@ -253,7 +253,7 @@ async function loadGameData() {
             return;
         }
         console.log('Game data loaded:', gameData);
-        
+
         // Determine which player slot the current user occupies
         if (gameData.uid1 === userID) {
             // User is player 1
@@ -263,11 +263,11 @@ async function loadGameData() {
             opponentName = gameData.player2Name || "Opponent";
             playerName = gameData.player1Name || auth.currentUser?.displayName || "Player";
             opponentUID = gameData.uid2;
-            
+
             // Load health and damage from uid1 fields
             playerHP = gameData.uid1health || CLASS_STATS[playerClass]?.hp || 100;
             playerTotalDamageDealt = gameData.uid1DMG || 0;
-            
+
         } else if (gameData.uid2 === userID) {
             // User is player 2
             isPlayer1 = false;
@@ -276,7 +276,7 @@ async function loadGameData() {
             opponentName = gameData.player1Name || "Opponent";
             playerName = gameData.player2Name || auth.currentUser?.displayName || "Player";
             opponentUID = gameData.uid1;
-            
+
             // Load health and damage from uid2 fields
             playerHP = gameData.uid2health || CLASS_STATS[playerClass]?.hp || 100;
             playerTotalDamageDealt = gameData.uid2DMG || 0;
@@ -285,7 +285,7 @@ async function loadGameData() {
             console.error(`User ${userID} not in game ${gameID}`);
             return;
         }
-        
+
         // Load opponent's health from the appropriate field
         if (isPlayer1) {
             opponentHP = gameData.uid2health || CLASS_STATS[opponentClass]?.hp || 100;
@@ -294,15 +294,15 @@ async function loadGameData() {
             opponentHP = gameData.uid1health || CLASS_STATS[opponentClass]?.hp || 100;
             opponentTotalDamageDealt = gameData.uid1DMG || 0;
         }
-        
+
         // Set maximum HP based on class
         maxPlayerHP = CLASS_STATS[playerClass]?.hp || 100;
         maxOpponentHP = CLASS_STATS[opponentClass]?.hp || 100;
-        
+
         // Determine whose turn it is
         currentTurn = gameData.turn;
         myTurn = (currentTurn === userID);
-        
+
         // Load status effects and cooldowns if they exist
         if (gameData.playerEffects || gameData.opponentEffects) {
             if (isPlayer1) {
@@ -325,14 +325,14 @@ async function loadGameData() {
         if (gameData.lastMove) lastMove = gameData.lastMove;
         if (gameData.lastMoveBy) lastMoveBy = gameData.lastMoveBy;
         if (gameData.lastActionText) lastActionText = gameData.lastActionText;
-        
+
         statusMessage = myTurn ? "YOUR TURN! Choose an action" : "Opponent's turn... Waiting...";
-        
+
         // Check if game has ended
         if (gameData.gameActive === false) {
             gameActive = false;
         }
-        
+
         // Check for winner
         if (gameData.winner) {
             gameActive = false;
@@ -348,7 +348,7 @@ async function loadGameData() {
             statusMessage = "VICTORY! You won!";
             saveWinToFirebase();
         }
-        
+
     } catch (error) {
         console.error('Error loading game data:', error);
         statusMessage = "Error loading game";
@@ -361,7 +361,7 @@ function startGameListener() {
     if (gameListener) {
         off(gameListener);  // Clean up existing listener
     }
-    
+
     const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
     gameListener = onValue(gameRef, (snapshot) => {
         if (!snapshot.exists()) {
@@ -369,7 +369,7 @@ function startGameListener() {
             redirectToLobby(1500);
             return;
         }
-        
+
         const gameData = snapshot.val();
         updateGameState(gameData);
     });
@@ -379,7 +379,7 @@ function startGameListener() {
 // Updates local game state when Firebase data changes
 function updateGameState(gameData) {
     if (winnerDeclared && gameActive === false) return;
-    
+
     if (!gameData.uid1 || !gameData.uid2 || gameData.uid1 === "" || gameData.uid2 === "") {
         statusMessage = "Opponent left. Returning to lobby...";
         redirectToLobby(2000);
@@ -412,7 +412,7 @@ function updateGameState(gameData) {
         currentTurn = gameData.turn;
         myTurn = (currentTurn === userID);
     }
-    
+
     // Update status effects
     if (gameData.playerEffects || gameData.opponentEffects) {
         if (isPlayer1) {
@@ -423,7 +423,7 @@ function updateGameState(gameData) {
             if (gameData.opponentEffects) Object.assign(playerEffects, gameData.opponentEffects);
         }
     }
-    
+
     // Update cooldowns
     if (gameData.playerCooldowns || gameData.opponentCooldowns) {
         if (isPlayer1) {
@@ -434,16 +434,16 @@ function updateGameState(gameData) {
             if (gameData.opponentCooldowns) Object.assign(playerCooldowns, gameData.opponentCooldowns);
         }
     }
-    
+
     // Update last move info
     if (gameData.lastMove) lastMove = gameData.lastMove;
     if (gameData.lastMoveBy) lastMoveBy = gameData.lastMoveBy;
-    
+
     // Update last action text
     if (gameData.lastActionText) {
         lastActionText = gameData.lastActionText;
     }
-    
+
     // Check for winner (multiple conditions for redundancy)
     if (gameData.winner && !winnerDeclared) {
         gameActive = false;
@@ -478,21 +478,21 @@ async function performAction(actionType) {
         statusMessage = "Not your turn or game is over!";
         return;
     }
-    
+
     // Check if move is on cooldown
     if (playerCooldowns[actionType] > 0) {
         statusMessage = `${actionType.toUpperCase()} on cooldown! ${playerCooldowns[actionType]} turns remaining.`;
         return;
     }
-    
+
     // Prevent using the same move twice in a row by the same player
     if (lastMoveBy === userID && lastMove === actionType) {
         statusMessage = "You cannot use the same move twice in a row!";
         return;
     }
-    
+
     actionInProgress = true;
-    
+
     const stats = CLASS_STATS[playerClass];
     let damage = 0;
     let healing = 0;
@@ -501,16 +501,16 @@ async function performAction(actionType) {
     let newOpponentHP = opponentHP;
     let newPlayerEffects = { ...playerEffects }; // "..." avoids mutating the original playerEffects and opponentEffects
     let newOpponentEffects = { ...opponentEffects };
-    
+
     // Calculate damage modifiers from status effects
     let playerDamageBonus = (playerEffects.dmgBuffTurns > 0) ? 10 : 0;
     let opponentDamageReduction = (opponentEffects.weakenTurns > 0) ? 10 : 0;
-    
+
     // Check if opponent is blocking
     let opponentBlocking = opponentEffects.blockRemaining;
-    
+
     // ==================== MOVE LOGIC ====================
-    switch(actionType) {
+    switch (actionType) {
         case "neutral":
             damage = stats.neutral + playerDamageBonus - opponentDamageReduction;
             damage = Math.max(1, damage);  // Minimum 1 damage
@@ -531,9 +531,9 @@ async function performAction(actionType) {
         case "special":
             actionLog = `${playerName} uses SPECIAL!`;
             playerCooldowns.special = 5;   // Special has 5 turn cooldown for balancing purposes
-            
+
             // Apply special ability based on class
-            switch(stats.special) {
+            switch (stats.special) {
                 case "bleed":
                     newOpponentEffects.bleedTurns = 3;
                     actionLog += " Opponent will bleed for 3 turns!";
@@ -557,12 +557,12 @@ async function performAction(actionType) {
             }
             break;
     }
-    
+
     // Apply healing
     if (healing > 0) {
         newPlayerHP = Math.min(maxPlayerHP, newPlayerHP + healing);
     }
-    
+
     // Apply damage (account for block)
     let damageDealtThisTurn = 0;
     if (damage > 0) {
@@ -575,7 +575,7 @@ async function performAction(actionType) {
             actionLog += ` Dealt ${damage} damage!`;
         }
     }
-    
+
     // ==================== APPLY STATUS EFFECTS ====================
     // Bleed effect (damage over time)
     if (playerEffects.bleedTurns > 0) {
@@ -590,7 +590,7 @@ async function performAction(actionType) {
         actionLog += ` Bleed deals ${bleedDamage} damage to opponent!`;
         newOpponentEffects.bleedTurns = opponentEffects.bleedTurns - 1;
     }
-    
+
     // Passive heal effect (healing over time)
     if (playerEffects.passiveHealTurns > 0) {
         let passiveHeal = 10;
@@ -604,22 +604,22 @@ async function performAction(actionType) {
         actionLog += ` Opponent's passive heal restores ${passiveHeal} HP!`;
         newOpponentEffects.passiveHealTurns = opponentEffects.passiveHealTurns - 1;
     }
-    
+
     // Decrease buff/debuff timers
     if (newPlayerEffects.dmgBuffTurns > 0) newPlayerEffects.dmgBuffTurns--;
     if (newOpponentEffects.weakenTurns > 0) newOpponentEffects.weakenTurns--;
-    
+
     // ==================== UPDATE DAMAGE TRACKING ====================
     let newPlayerDamageTotal = playerTotalDamageDealt + damageDealtThisTurn;
     let newOpponentDamageTotal = opponentTotalDamageDealt;
-    
+
     // Add to battle log
     addToBattleLog(actionLog, "player");
     lastActionText = actionLog;
 
     // ==================== CHECK FOR WINNER ====================
     let winner = null;
-    
+
     if (newOpponentHP <= 0) {
         winner = playerName;
         gameActive = false;
@@ -631,12 +631,12 @@ async function performAction(actionType) {
         winnerDeclared = true;
         addToBattleLog(`${opponentName} WINS THE BOUT!`, "system");
     }
-    
+
     // Decrease cooldowns (move cooldowns decrease each turn)
     for (let key in playerCooldowns) {
         if (playerCooldowns[key] > 0) playerCooldowns[key]--;
     }
-    
+
     // ==================== UPDATE FIREBASE ====================
     const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
     const updateData = {
@@ -649,7 +649,7 @@ async function performAction(actionType) {
         playerEffects: isPlayer1 ? newPlayerEffects : newOpponentEffects,
         opponentEffects: isPlayer1 ? newOpponentEffects : newPlayerEffects
     };
-    
+
     // Update health and damage fields based on player slot
     if (isPlayer1) {
         updateData.uid1health = newPlayerHP;
@@ -662,14 +662,14 @@ async function performAction(actionType) {
         updateData.uid2DMG = newPlayerDamageTotal;
         updateData.uid1DMG = newOpponentDamageTotal;
     }
-    
+
     if (winner) {
         updateData.winner = winner;
         updateData.gameActive = false;
     }
-    
+
     await update(gameRef, updateData);
-    
+
     // ==================== UPDATE LOCAL STATE ====================
     playerHP = newPlayerHP;
     opponentHP = newOpponentHP;
@@ -699,38 +699,38 @@ function addToBattleLog(message, type = "player") {
 // Increments the user's win count and total damage in the users/{uid} path
 async function saveWinToFirebase() {
     if (!userID || !playerName) return;
-    
+
     try {
         const userRef = ref(database, `users/${userID}`);
         const snapshot = await get(userRef);
-        
+
         let currentWins = 0;
         let currentDamage = 0;
         let previousBest = 0;
-        
+
         if (snapshot.exists()) {
             const userData = snapshot.val();
             currentWins = userData.wins || 0;
             currentDamage = userData.totalDamage || 0;
             previousBest = userData.highestTotalDamage || 0;
         }
-        
+
         const newWins = currentWins + 1;
         const newDamage = currentDamage + playerTotalDamageDealt;
         const bestDamage = Math.max(previousBest, playerTotalDamageDealt);
-        
+
         await update(userRef, {
             wins: newWins,
             totalDamage: newDamage,
             highestTotalDamage: bestDamage,
             lastWinDate: new Date().toISOString()
         });
-        
+
         userTotalWins = newWins;
         console.log(`Win saved! ${playerName} now has ${newWins} wins and highest total damage ${bestDamage}`);
         addToBattleLog(`${playerName} now has ${newWins} total wins!`, "system");
         addToBattleLog(`Best damage record: ${bestDamage}`, "system");
-        
+
     } catch (error) {
         console.error('Error saving win to users:', error);
     }
@@ -775,26 +775,26 @@ function draw() {
     } else {
         background(20, 25, 45);
     }
-    
+
     // Decorative border
     stroke(201, 168, 123);
     strokeWeight(4);
     noFill();
     rect(20, 20, width - 40, height - 40, 30);
-    
+
     // Game title
     fill(230, 200, 143);
     textSize(36);
     textStyle(BOLD);
     text("BLANDBOURN BOUT", width / 2, 55);
-    
+
     // Display user's win count (top right)
     fill(230, 200, 143);
     textSize(14);
     textAlign(RIGHT, CENTER);
     text(`Wins: ${userTotalWins}`, width - 40, 45);
     textAlign(CENTER, CENTER);
-    
+
     // Status message panel (turn indicator)
     fill(50, 50, 70);
     noStroke();
@@ -802,7 +802,7 @@ function draw() {
     fill(myTurn && gameActive && !winnerDeclared ? 255 : 200);
     textSize(18);
     text(statusMessage, width / 2, 98);
-    
+
     // Ensure game data is ready before drawing the main battle UI
     if (!playerClass || !CLASS_STATS[playerClass] || !playerName) {
         background(20, 25, 45);
@@ -816,21 +816,21 @@ function draw() {
     fill(230, 200, 143);
     textSize(52);
     text("VS", width / 2, height / 2 - 30);
-    
+
     // Draw both player cards
     drawPlayerCard(true, 80, 160, 500, 380);   // Player card (left)
     drawPlayerCard(false, width - 580, 160, 500, 380); // Opponent card (right)
-    
+
     // Draw action buttons when the game is active so the forfeit button is always visible
     if (gameActive && !winnerDeclared) {
         drawActionButtons();
     }
-    
+
     // Draw UI panels
     drawBattleLog();
     drawCooldownInfo();
     drawDamageInfo();
-    
+
     // Display last action at the bottom
     if (lastActionText) {
         fill(200, 200, 200);
@@ -847,7 +847,7 @@ function drawPlayerCard(isPlayer, x, y, w, h) {
     const name = isPlayer ? playerName : opponentName;
     const effects = isPlayer ? (playerEffects || {}) : (opponentEffects || {});
     const totalDamage = isPlayer ? playerTotalDamageDealt : opponentTotalDamageDealt;
-    
+
     // Card background (different colors for player vs opponent)
     if (isPlayer) {
         fill(30, 40, 70);
@@ -857,7 +857,7 @@ function drawPlayerCard(isPlayer, x, y, w, h) {
     stroke(201, 168, 123);
     strokeWeight(2);
     rect(x, y, w, h, 20);
-    
+
     // Class image
     const img = classImages[className] || classImages['default'];
     if (img) {
@@ -872,31 +872,31 @@ function drawPlayerCard(isPlayer, x, y, w, h) {
             pop();
         }
     }
-    
+
     // Player name
     fill(230, 200, 143);
     textSize(26);
     text(name, x + w / 2, y + 45);
-    
+
     // Class name
     fill(180, 180, 200);
     textSize(18);
     text(className || "???", x + w / 2, y + 80);
-    
+
     // HP bar background
     fill(60, 30, 30);
     rect(x + 25, y + 175, w - 50, 28, 10);
-    
+
     // HP bar fill (percentage based)
     const hpPercent = Math.max(0, hp / maxHp);
     fill(76, 175, 80);
     rect(x + 25, y + 175, (w - 50) * hpPercent, 28, 10);
-    
+
     // HP text
     fill(255);
     textSize(20);
     text(`HP: ${Math.max(0, hp)} / ${maxHp}`, x + w / 2, y + 218);
-    
+
     // Status effects text (BLEED, REGEN, DMG+, BLOCK, WEAKEN)
     let effectText = "";
     if (effects.bleedTurns > 0) effectText += "BLEED ";
@@ -904,11 +904,11 @@ function drawPlayerCard(isPlayer, x, y, w, h) {
     if (effects.dmgBuffTurns > 0) effectText += "DMG+ ";
     if (effects.blockRemaining) effectText += "BLOCK ";
     if (effects.weakenTurns > 0) effectText += "WEAKEN ";
-    
+
     fill(255, 200, 100);
     textSize(13);
     text(effectText, x + w / 2, y + 260);
-    
+
     // Total damage dealt display
     fill(180, 180, 220);
     textSize(12);
@@ -929,9 +929,9 @@ function drawActionButtons() {
     const btnH = 55;
     const spacing = 25;
     const startX = width / 2 - (btnW * 2 + spacing);
-    
+
     buttons = [];  // Reset button coordinates array
-    
+
     // ===== NEUTRAL BUTTON =====
     let btnX = startX;
     let isNeutralCD = playerCooldowns.neutral > 0;
@@ -940,19 +940,19 @@ function drawActionButtons() {
     rect(btnX, btnY, btnW, btnH, 12);
     fill(255);
     textSize(15);
-    text("NEUTRAL", btnX + btnW/2, btnY + btnH/2 - 8);
+    text("NEUTRAL", btnX + btnW / 2, btnY + btnH / 2 - 8);
     textSize(13);
-    text(`${stats.neutral} dmg`, btnX + btnW/2, btnY + btnH/2 + 10);
+    text(`${stats.neutral} dmg`, btnX + btnW / 2, btnY + btnH / 2 + 10);
     if (isNeutralCD) {
         fill(255, 100, 100);
-        text(`CD: ${playerCooldowns.neutral}`, btnX + btnW/2, btnY + btnH - 12);
+        text(`CD: ${playerCooldowns.neutral}`, btnX + btnW / 2, btnY + btnH - 12);
     } else if (!myTurn) {
         fill(255, 150);
         textSize(11);
-        text(`WAITING...`, btnX + btnW/2, btnY + btnH - 12);
+        text(`WAITING...`, btnX + btnW / 2, btnY + btnH - 12);
     }
     buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "neutral", isCD: neutralDisabled });
-    
+
     // ===== HEAVY BUTTON =====
     btnX += btnW + spacing;
     let isHeavyCD = playerCooldowns.heavy > 0;
@@ -960,18 +960,18 @@ function drawActionButtons() {
     fill(heavyDisabled ? 80 : 138, 74, 74);
     rect(btnX, btnY, btnW, btnH, 12);
     fill(255);
-    text("HEAVY", btnX + btnW/2, btnY + btnH/2 - 8);
-    text(`${stats.heavy} dmg`, btnX + btnW/2, btnY + btnH/2 + 10);
+    text("HEAVY", btnX + btnW / 2, btnY + btnH / 2 - 8);
+    text(`${stats.heavy} dmg`, btnX + btnW / 2, btnY + btnH / 2 + 10);
     if (isHeavyCD) {
         fill(255, 100, 100);
-        text(`CD: ${playerCooldowns.heavy}`, btnX + btnW/2, btnY + btnH - 12);
+        text(`CD: ${playerCooldowns.heavy}`, btnX + btnW / 2, btnY + btnH - 12);
     } else if (!myTurn) {
         fill(255, 150);
         textSize(11);
-        text(`WAITING...`, btnX + btnW/2, btnY + btnH - 12);
+        text(`WAITING...`, btnX + btnW / 2, btnY + btnH - 12);
     }
     buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "heavy", isCD: heavyDisabled });
-    
+
     // ===== HEAL BUTTON =====
     btnX += btnW + spacing;
     let isHealCD = playerCooldowns.heal > 0;
@@ -979,18 +979,18 @@ function drawActionButtons() {
     fill(healDisabled ? 80 : 74, 138, 94);
     rect(btnX, btnY, btnW, btnH, 12);
     fill(255);
-    text("HEAL", btnX + btnW/2, btnY + btnH/2 - 8);
-    text(`+${stats.heal} HP`, btnX + btnW/2, btnY + btnH/2 + 10);
+    text("HEAL", btnX + btnW / 2, btnY + btnH / 2 - 8);
+    text(`+${stats.heal} HP`, btnX + btnW / 2, btnY + btnH / 2 + 10);
     if (isHealCD) {
         fill(255, 100, 100);
-        text(`CD: ${playerCooldowns.heal}`, btnX + btnW/2, btnY + btnH - 12);
+        text(`CD: ${playerCooldowns.heal}`, btnX + btnW / 2, btnY + btnH - 12);
     } else if (!myTurn) {
         fill(255, 150);
         textSize(11);
-        text(`WAITING...`, btnX + btnW/2, btnY + btnH - 12);
+        text(`WAITING...`, btnX + btnW / 2, btnY + btnH - 12);
     }
     buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "heal", isCD: healDisabled });
-    
+
     // ===== SPECIAL BUTTON =====
     btnX += btnW + spacing;
     let isSpecialCD = playerCooldowns.special > 0;
@@ -999,17 +999,17 @@ function drawActionButtons() {
     rect(btnX, btnY, btnW, btnH, 12);
     fill(255);
     textSize(13);
-    text("SPECIAL", btnX + btnW/2, btnY + btnH/2 - 12);
+    text("SPECIAL", btnX + btnW / 2, btnY + btnH / 2 - 12);
     textSize(10);
-    text(stats.specialDesc.substring(0, 18), btnX + btnW/2, btnY + btnH/2 + 5);
+    text(stats.specialDesc.substring(0, 18), btnX + btnW / 2, btnY + btnH / 2 + 5);
     if (isSpecialCD) {
         fill(255, 100, 100);
         textSize(11);
-        text(`CD: ${playerCooldowns.special}`, btnX + btnW/2, btnY + btnH - 10);
+        text(`CD: ${playerCooldowns.special}`, btnX + btnW / 2, btnY + btnH - 10);
     } else if (!myTurn) {
         fill(255, 150);
         textSize(11);
-        text(`WAITING...`, btnX + btnW/2, btnY + btnH - 10);
+        text(`WAITING...`, btnX + btnW / 2, btnY + btnH - 10);
     }
     buttons.push({ x: btnX, y: btnY, w: btnW, h: btnH, action: "special", isCD: specialDisabled });
 
@@ -1033,14 +1033,14 @@ function drawBattleLog() {
     const logY = height - 230;
     const logW = 320;
     const logH = 180;
-    
+
     fill(0, 0, 0, 200);
     rect(logX, logY, logW, logH, 10);
-    
+
     fill(230, 200, 143);
     textSize(14);
     text("BATTLE LOG", logX + 10, logY + 22);
-    
+
     textSize(11);
     for (let i = 0; i < Math.min(8, battleLog.length); i++) {
         const entry = battleLog[i];
@@ -1060,26 +1060,26 @@ function drawCooldownInfo() {
     const infoY = height - 230;
     const infoW = 320;
     const infoH = 180;
-    
+
     fill(0, 0, 0, 200);
     rect(infoX, infoY, infoW, infoH, 10);
-    
+
     fill(230, 200, 143);
     textSize(14);
     text("COOLDOWNS", infoX + 10, infoY + 22);
-    
+
     fill(200);
     textSize(13);
     const neutralStatus = playerCooldowns.neutral > 0 ? `${playerCooldowns.neutral} turns` : "READY";
     const heavyStatus = playerCooldowns.heavy > 0 ? `${playerCooldowns.heavy} turns` : "READY";
     const healStatus = playerCooldowns.heal > 0 ? `${playerCooldowns.heal} turns` : "READY";
     const specialStatus = playerCooldowns.special > 0 ? `${playerCooldowns.special} turns` : "READY";
-    
+
     text(`Neutral: ${neutralStatus}`, infoX + 15, infoY + 55);
     text(`Heavy: ${heavyStatus}`, infoX + 15, infoY + 80);
     text(`Heal: ${healStatus}`, infoX + 15, infoY + 105);
     text(`Special: ${specialStatus}`, infoX + 15, infoY + 130);
-    
+
     fill(255, 200, 100);
     textSize(11);
     const lastMoveDisplay = lastMove ? `${lastMove} (${lastMoveBy === userID ? 'you' : 'opponent'})` : 'none';
@@ -1092,20 +1092,20 @@ function drawDamageInfo() {
     const infoY = height - 100;
     const infoW = 300;
     const infoH = 35;
-    
+
     fill(0, 0, 0, 180);
     rect(infoX, infoY, infoW, infoH, 10);
-    
+
     fill(230, 200, 143);
     textSize(12);
-    text(`Your Total Damage: ${playerTotalDamageDealt}`, infoX + infoW/2, infoY + infoH/2);
+    text(`Your Total Damage: ${playerTotalDamageDealt}`, infoX + infoW / 2, infoY + infoH / 2);
 }
 
 // ==================== MOUSE CLICK HANDLER ====================
 // Detects clicks on action buttons and triggers the corresponding move
 function mouseClicked() {
     for (let btn of buttons) {
-        if (mouseX > btn.x && mouseX < btn.x + btn.w && 
+        if (mouseX > btn.x && mouseX < btn.x + btn.w &&
             mouseY > btn.y && mouseY < btn.y + btn.h) {
             if (btn.action === "forfeit") {
                 if (!gameActive || winnerDeclared) {
