@@ -15,7 +15,7 @@ let availableGames = [];
 // Declare image variables
 let imgPlaceholder, imgSpartan, imgWizard, imgPaladin, imgBarbarian, imgCleric, classImages;
 // Declare UI variables
-let loginButton, getoutButton, createGameButton, joinGameButton, gameCodeInput, refreshButton;
+let loginButton, getoutButton, createGameButton, joinGameButton, gameCodeInput;
 let gameActionButton, usernameInput;
 // Declare other variables
 let statusMessage, isAuthenticated, isAdmin;
@@ -55,9 +55,8 @@ function setup() {
 }
 
 function preload() { //Preload everyting for further purposes.
-    imgPlaceholder = loadImage('../other/images.jpg'); //placeholder
-    imgSpartan = loadImage('../other/Kratos_PS4.png'); // all property of Kratos go to Sony and Playstation. Also using Kratos as the spartan just seems funny to me.
-    imgWizard = loadImage('../other/BbBWiz.png');
+    imgPlaceholder = loadImage('../other/images.jpg'); 
+    imgSpartan = loadImage('../other/BbBSpar.png'); // Was origionally Kratos from GOW
     imgPaladin = loadImage('../other/BbBPal.png');
     imgBarbarian = loadImage('../other/BbBBarb.png');
     imgCleric = loadImage('../other/BbBCler.png');
@@ -116,7 +115,6 @@ function startGameListener(gameId) {
         if (createGameButton) createGameButton.hide();
         if (joinGameButton) joinGameButton.hide();
         if (gameCodeInput) gameCodeInput.hide();
-        if (refreshButton) refreshButton.hide();
 
         if (auth.currentUser) {
             userID = auth.currentUser.uid;
@@ -197,7 +195,6 @@ function updateUIForAuth(loggedIn) {
         joinGameButton.show();
         usernameInput.show();
         gameCodeInput.show();
-        refreshButton.show();
 
         // Show game action button if in a game
         if (gameID) {
@@ -215,7 +212,6 @@ function updateUIForAuth(loggedIn) {
         joinGameButton.hide();
         usernameInput.hide();
         gameCodeInput.hide();
-        refreshButton.hide();
         gameActionButton.hide();
     }
 }
@@ -251,14 +247,13 @@ function setupUI() {
     usernameInput.hide();
 
     // Game creation UI
-    createGameButton = createButton('Create New Game');
+    createGameButton = createButton('Create Game');
     createGameButton.position(20, 110);
     createGameButton.mousePressed(createNewGame);
     createGameButton.hide();
     // Prevent creating/joining while waiting for opponent
     if (joinGameButton) joinGameButton.hide();
     if (gameCodeInput) gameCodeInput.hide();
-    if (refreshButton) refreshButton.hide();
     if (usernameInput) usernameInput.hide();
 
     joinGameButton = createButton('Join Game');
@@ -270,11 +265,6 @@ function setupUI() {
     gameCodeInput.position(20, 150);
     gameCodeInput.attribute('placeholder', 'Enter Game Code');
     gameCodeInput.hide();
-
-    refreshButton = createButton('Refresh Games');
-    refreshButton.position(280, 70);
-    refreshButton.mousePressed(refreshAvailableGames);
-    refreshButton.hide();
 
     // Single Leave & Change Class button
     gameActionButton = createButton('Leave');
@@ -514,7 +504,6 @@ async function joinGame() {
         if (createGameButton) createGameButton.hide();
         if (joinGameButton) joinGameButton.hide();
         if (gameCodeInput) gameCodeInput.hide();
-        if (refreshButton) refreshButton.hide();
         if (usernameInput) usernameInput.hide();
 
         // Show game action button
@@ -636,7 +625,6 @@ function clearGameState() {
     gameActionButton.hide();
     createGameButton.show();
     joinGameButton.show();
-    refreshButton.show();
 }
 
 async function changeClass() {//set class
@@ -761,14 +749,12 @@ function drawLoginPrompt() {
 }
 
 function drawLobby() {
-    // Draw current game info if in a game
     if (gameID) {
         drawGameLobby();
     } else {
+        drawLeaderboard();
         drawAvailableGames();
     }
-
-    drawLeaderboard();
 
     // Draw userID info
     fill(0);
@@ -900,10 +886,9 @@ function drawLeaderboard() { //Leaderbored
     textStyle(NORMAL);
     textSize(14);
     fill(40);
-    text(`User: ${userID}`, width / 2.15, boardY + 52)
-    text(`Wins: ${userTotalWins}`, width / 2.15, boardY + 74);
-    text(`Highest Damage: ${userHighestDamage}`, width / 2.15, boardY + 96);
-    text(`Total Damage: ${userTotalDamage}`, width / 2.15, boardY + 118);
+    text(`User`, width / 2.75, boardY + 52)
+    text(`Wins`, width / 2.05, boardY + 52);
+    text(`Total Damage`, width / 1.75, boardY + 52);
 }
 
 // mouseClicked handles both Ready Up button AND Join Game buttons

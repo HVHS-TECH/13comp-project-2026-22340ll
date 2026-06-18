@@ -144,8 +144,8 @@ function preload() {
         loadImage('../other/battleback9.png'),
         loadImage('../other/battleback10.png')
     ];
-    imgSpartan = loadImage('../other/Kratos_PS4.png'); // all property of Kratos go to Sony and Playstation.
-    imgWizard = loadImage('../other/BbBWiz.png'); // Also using Kratos as the spartan just seems funny to me.
+    imgSpartan = loadImage('../other/BbBSpar.png'); // Was origionally Kratos from GOW
+    imgWizard = loadImage('../other/BbBWiz.png'); 
     imgPaladin = loadImage('../other/BbBPal.png');
     imgBarbarian = loadImage('../other/BbBBarb.png');
     imgCleric = loadImage('../other/BbBCler.png');
@@ -1039,7 +1039,7 @@ function drawBattleLog() {
 
     fill(230, 200, 143);
     textSize(14);
-    text("BATTLE LOG", logX + 10, logY + 22);
+    text("BATTLE LOG", logX + 50, logY + 22);
 
     textSize(11);
     for (let i = 0; i < Math.min(8, battleLog.length); i++) {
@@ -1050,7 +1050,7 @@ function drawBattleLog() {
         else fill(180);
         let displayMsg = entry.message;
         if (displayMsg.length > 35) displayMsg = displayMsg.substring(0, 32) + "...";
-        text(displayMsg, logX + 10, logY + 45 + (i * 16));
+        text(displayMsg, logX + 35, logY + 45 + (i * 16));
     }
 }
 
@@ -1066,7 +1066,7 @@ function drawCooldownInfo() {
 
     fill(230, 200, 143);
     textSize(14);
-    text("COOLDOWNS", infoX + 10, infoY + 22);
+    text("COOLDOWNS", infoX + 150, infoY + 22);
 
     fill(200);
     textSize(13);
@@ -1075,15 +1075,15 @@ function drawCooldownInfo() {
     const healStatus = playerCooldowns.heal > 0 ? `${playerCooldowns.heal} turns` : "READY";
     const specialStatus = playerCooldowns.special > 0 ? `${playerCooldowns.special} turns` : "READY";
 
-    text(`Neutral: ${neutralStatus}`, infoX + 15, infoY + 55);
-    text(`Heavy: ${heavyStatus}`, infoX + 15, infoY + 80);
-    text(`Heal: ${healStatus}`, infoX + 15, infoY + 105);
-    text(`Special: ${specialStatus}`, infoX + 15, infoY + 130);
+    text(`Neutral: ${neutralStatus}`, infoX + 150, infoY + 55);
+    text(`Heavy: ${heavyStatus}`, infoX + 150, infoY + 80);
+    text(`Heal: ${healStatus}`, infoX + 150, infoY + 105);
+    text(`Special: ${specialStatus}`, infoX + 150, infoY + 130);
 
     fill(255, 200, 100);
     textSize(11);
     const lastMoveDisplay = lastMove ? `${lastMove} (${lastMoveBy === userID ? 'you' : 'opponent'})` : 'none';
-    text(`Last move: ${lastMoveDisplay}`, infoX + 15, infoY + 160);
+    text(`Last move: ${lastMoveDisplay}`, infoX + 150, infoY + 160);
 }
 
 // Draws the player's total damage dealt panel

@@ -20,22 +20,6 @@
       <button onclick="location.href='/startscreen.html'">Back to Start Screen</button>
     </div>
 
-    <script>
-      const urlParams = new URLSearchParams(window.location.search);
-      const score = urlParams.get('score') || 0;  //PLACEHOLDER DO NOT INTERACT YET
-      document.getElementById('finalScore').textContent = `Score: ${score}`;
-      let highScore = localStorage.getItem('highScore') || 0;
-      if (parseInt(score) > parseInt(highScore)) {
-        highScore = score;
-        localStorage.setItem('highScore', highScore);
-        document.getElementById('highScore').textContent = `New High Score: ${highScore}`;
-      } else {
-        document.getElementById('highScore').textContent = `High Score: ${highScore}`;
-      }
-      document.addEventListener('click', function () {
-        document.getElementById('end-audio').play();
-      }, { once: true });
-    </script>
   </header>
 </body>
 
