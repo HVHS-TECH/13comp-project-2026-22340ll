@@ -57,14 +57,16 @@ let playerEffects = {
     passiveHealTurns: 0,
     dmgBuffTurns: 0,
     blockRemaining: false,
-    weakenTurns: 0
+    weakenTurns: 0,
+    vulnerableTurns: 0
 };
 let opponentEffects = {
     bleedTurns: 0,
     passiveHealTurns: 0,
     dmgBuffTurns: 0,
     blockRemaining: false,
-    weakenTurns: 0
+    weakenTurns: 0,
+    vulnerableTurns: 0
 };
 
 // ==================== CLASS STATISTICS ====================
@@ -194,12 +196,14 @@ async function setupGame() {
     if (!gameID) {
         statusMessage = 'Missing game code. Please launch from the lobby.';
         console.error('No gameID in sessionStorage');
+        console.error('Did you really think that trick would work?')
         return;
     }
 
     if (!userID) {
         statusMessage = 'Not signed in. Please log in and retry.';
         console.error('No userID found for game', gameID);
+        console.error('In order to play the game, you need to actually exist.');
         return;
     }
 
@@ -505,6 +509,7 @@ async function performAction(actionType) {
     // Calculate damage modifiers from status effects
     let playerDamageBonus = (playerEffects.dmgBuffTurns > 0) ? 10 : 0;
     let opponentDamageReduction = (opponentEffects.weakenTurns > 0) ? 10 : 0;
+    let opponentVulnBonus = (opponentEffects.vulnerableTurns > 0) ? 5 : 0;
 
     // Check if opponent is blocking
     let opponentBlocking = opponentEffects.blockRemaining;
@@ -512,16 +517,21 @@ async function performAction(actionType) {
     // ==================== MOVE LOGIC ====================
     switch (actionType) {
         case "neutral":
-            damage = stats.neutral + playerDamageBonus - opponentDamageReduction;
+            damage = stats.neutral + playerDamageBonus - opponentDamageReduction + opponentVulnBonus;
             damage = Math.max(1, damage);  // Minimum 1 damage
             actionLog = `${playerName} uses NEUTRAL ATTACK!`;
             playerCooldowns.neutral = 3;   // 3 turn cooldown
             break;
         case "heavy":
-            damage = stats.heavy + playerDamageBonus - opponentDamageReduction;
+            damage = stats.heavy + playerDamageBonus - opponentDamageReduction + opponentVulnBonus;
             damage = Math.max(1, damage);
             actionLog = `${playerName} uses HEAVY STRIKE!`;
             playerCooldowns.heavy = 3;  //3 turn cooldown
+            // Heavy makes the user vulnerable to incoming damage next turn (except Wizard)
+            if (playerClass !== "Wizard") {
+                newPlayerEffects.vulnerableTurns = 2;
+                actionLog += " You feel exposed to counterattacks!";
+            }
             break;
         case "heal":
             healing = stats.heal;
@@ -607,7 +617,11 @@ async function performAction(actionType) {
 
     // Decrease buff/debuff timers
     if (newPlayerEffects.dmgBuffTurns > 0) newPlayerEffects.dmgBuffTurns--;
+    if (newOpponentEffects.dmgBuffTurns > 0) newOpponentEffects.dmgBuffTurns--;
+    if (newPlayerEffects.weakenTurns > 0) newPlayerEffects.weakenTurns--;
     if (newOpponentEffects.weakenTurns > 0) newOpponentEffects.weakenTurns--;
+    if (newPlayerEffects.vulnerableTurns > 0) newPlayerEffects.vulnerableTurns--;
+    if (newOpponentEffects.vulnerableTurns > 0) newOpponentEffects.vulnerableTurns--;
 
     // ==================== UPDATE DAMAGE TRACKING ====================
     let newPlayerDamageTotal = playerTotalDamageDealt + damageDealtThisTurn;
@@ -816,6 +830,7 @@ function draw() {
     fill(230, 200, 143);
     textSize(52);
     text("VS", width / 2, height / 2 - 30);
+    
 
     // Draw both player cards
     drawPlayerCard(true, 80, 160, 500, 380);   // Player card (left)
@@ -831,11 +846,11 @@ function draw() {
     drawCooldownInfo();
     drawDamageInfo();
 
-    // Display last action at the bottom
+    // Display last action near the VS area (slightly below VS)
     if (lastActionText) {
         fill(200, 200, 200);
-        textSize(13);
-        text(lastActionText, width / 2, height - 50);
+        textSize(14);
+        text(lastActionText, width / 2, height / 2 + 10);
     }
 }
 
@@ -904,6 +919,7 @@ function drawPlayerCard(isPlayer, x, y, w, h) {
     if (effects.dmgBuffTurns > 0) effectText += "DMG+ ";
     if (effects.blockRemaining) effectText += "BLOCK ";
     if (effects.weakenTurns > 0) effectText += "WEAKEN ";
+    if (effects.vulnerableTurns > 0) effectText += "VULNRABLE";
 
     fill(255, 200, 100);
     textSize(13);
@@ -1050,7 +1066,7 @@ function drawBattleLog() {
         else fill(180);
         let displayMsg = entry.message;
         if (displayMsg.length > 35) displayMsg = displayMsg.substring(0, 32) + "...";
-        text(displayMsg, logX + 35, logY + 45 + (i * 16));
+        text(displayMsg, logX + 120, logY + 45 + (i * 16));
     }
 }
 
@@ -1089,7 +1105,8 @@ function drawCooldownInfo() {
 // Draws the player's total damage dealt panel
 function drawDamageInfo() {
     const infoX = width / 2 - 150;
-    const infoY = height - 100;
+    // Position the damage panel slightly above the VS text
+    const infoY = height / 2 - 88;
     const infoW = 300;
     const infoH = 35;
 
