@@ -30,7 +30,7 @@ body {
     background-color: #bdddff;
     color: #fff;
     transition: background-color 0.3s;
-    width: 130px; /* Set a fixed width */
+    width: 140px; /* Set a fixed width */
     text-align: center;
   }
   

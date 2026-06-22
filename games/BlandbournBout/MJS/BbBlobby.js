@@ -236,7 +236,7 @@ function setupUI() {
     loginButton.mousePressed(handleLogin);
 
     getoutButton = createButton('Exit to Start Screen');
-    getoutButton.position(300, 20);
+    getoutButton.position(185, 50);
     getoutButton.mousePressed(handleExitToSelection);
     getoutButton.hide();
 
@@ -257,7 +257,7 @@ function setupUI() {
     if (usernameInput) usernameInput.hide();
 
     joinGameButton = createButton('Join Game');
-    joinGameButton.position(150, 110);
+    joinGameButton.position(185, 110);
     joinGameButton.mousePressed(joinGame);
     joinGameButton.hide();
 
@@ -489,7 +489,7 @@ async function joinGame() {
         // Store player info
         await set(ref(database, `users/${userID}/currentGame`), gameCode);
         await set(ref(database, `users/${userID}/currentClass`), randomClass);
-        await set(ref(database, `users/${userID}/gameName`), username);
+        await set(ref(database, `users/${userID}/username`), username);
 
         // Store in sessionStorage for waiting page
         sessionStorage.setItem('gameID', gameCode);
