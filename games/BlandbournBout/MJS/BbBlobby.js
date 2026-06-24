@@ -24,6 +24,9 @@ let currentGameData = null, gameInterval, lobbyListener;
 let userTotalWins = 0;
 let userHighestDamage = 0;
 let userTotalDamage = 0;
+let leaderboardData = [];
+let lastLeaderboardFetch = 0;
+const LEADERBOARD_REFRESH_INTERVAL = 30000; // Refresh every 30 seconds
 
 console.log("Authenticate Please");
 
@@ -866,12 +869,13 @@ function drawGameLobby() {
     }
 }
 
-function drawLeaderboard() { //Leaderbored
+async function drawLeaderboard() {
     const boardW = 500;
     const boardH = 300;
     const boardX = width / 2 - boardW / 2;
     const boardY = 140;
 
+    // Draw leaderboard background
     fill(245);
     stroke(30);
     strokeWeight(2);
@@ -881,14 +885,67 @@ function drawLeaderboard() { //Leaderbored
     fill(20);
     textSize(18);
     textStyle(BOLD);
-    text('Leaderboard', width / 2.15, boardY + 28);
+    text('Leaderboard', width / 2, boardY + 10);
 
     textStyle(NORMAL);
     textSize(14);
     fill(40);
-    text(`User`, width / 2.75, boardY + 52)
-    text(`Wins`, width / 2.05, boardY + 52);
-    text(`Total Damage`, width / 1.75, boardY + 52);
+    text(`User`, width / 2.75, boardY + 32);
+    text(`Wins`, width / 2.05, boardY + 32);
+    text(`Total Damage`, width / 1.75, boardY + 32);
+
+    // Leaderboard
+    const now = Date.now();
+    if (now - lastLeaderboardFetch > LEADERBOARD_REFRESH_INTERVAL || leaderboardData.length === 0) {
+        try {
+            const usersRef = ref(database, 'users');
+            const snapshot = await get(usersRef);
+            
+            if (snapshot.exists()) {
+                const usersData = snapshot.val();
+                leaderboardData = Object.entries(usersData)
+                    .map(([uid, data]) => ({
+                        uid,
+                        username: data.username || 'Anonymous',
+                        wins: data.wins || 0,
+                        totalDamage: data.totalDamage || 0
+                    }))
+                    .sort((a, b) => b.wins - a.wins)
+                    .slice(0, 10); // Show top 10 users
+                
+                lastLeaderboardFetch = now;
+            } else {
+                leaderboardData = [];
+            }
+        } catch (error) {
+            console.error('Error fetching leaderboard:', error);
+            leaderboardData = [];
+        }
+    }
+
+    // Display leaderboard data
+    if (leaderboardData.length > 0) {
+        let yPos = boardY + 50;
+        leaderboardData.forEach((user, index) => {
+            fill(40);
+            textSize(13);
+            textAlign(LEFT);
+            // Display rank and username
+            text(`${index + 1}. ${user.username}`, boardX + 20, yPos);
+            // Display wins (centered)
+            textAlign(CENTER);
+            text(user.wins, width / 2.05, yPos);
+            // Display total damage (right aligned)
+            textAlign(LEFT);
+            text(user.totalDamage, boardX + 340, yPos);
+            yPos += 25;
+        });
+    } else {
+        fill(100);
+        textSize(14);
+        textAlign(CENTER);
+        text('No users found', width / 2, boardY + 100);
+    }
 }
 
 // mouseClicked handles both Ready Up button AND Join Game buttons
