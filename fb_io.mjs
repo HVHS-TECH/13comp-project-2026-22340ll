@@ -14,6 +14,7 @@ import {
     set,
     get,
     onValue,
+    off,
     query,
     orderByChild,
     limitToLast,
@@ -450,5 +451,6 @@ export {
     set,
     get,
     onValue,
+    off,
     update
 };

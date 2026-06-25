@@ -136,7 +136,7 @@ let userTotalWins = 0;
 let endGameTimeout = null;
 const LOBBY_PAGE = 'BbBlobby.html';
 
-// ==================== P5.js SETUP ====================
+// ====================SETUP ====================
 function preload() {
     imgPlaceholder = loadImage('../other/images.jpg');
     battlebackImages = [         // All backgrounds credit to Gabriel 'Nidhoggn' de Aguiar
@@ -363,7 +363,8 @@ async function loadGameData() {
 // Listens for changes to the game data in Firebase and updates the UI
 function startGameListener() {
     if (gameListener) {
-        off(gameListener);  // Clean up existing listener
+        gameListener();  // Clean up existing listener
+        gameListener = null;
     }
 
     const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
@@ -1170,8 +1171,36 @@ async function forfeitGame() {
         statusMessage = "You forfeited. Returning to lobby...";
         scheduleEndGameReturn();
     } catch (error) {
-        console.error('Error forfeiting game:', error);
-        statusMessage = "Error processing forfeit.";
+        console.error('Error forfeiting game:', error); 
+        statusMessage = "Error processing forfeit. HOW?!";
+    }
+}
+
+async function forfeitGameOnClose() {
+    if (!gameID || !userID || !gameActive || winnerDeclared) return;
+    const winnerName = opponentName || "Opponent";
+    const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
+
+    try {
+        await update(gameRef, {
+            winner: winnerName,
+            gameActive: false,
+            lastActionText: `${playerName} forfeited. ${winnerName} wins!`,
+            lastMove: 'forfeit',
+            lastMoveBy: userID
+        });
+    } catch (error) {
+        console.error('Error updating game on close:', error);
+    }
+}
+
+function handleBeforeUnload() {
+    if (gameListener) {
+        gameListener();
+        gameListener = null;
+    }
+    if (gameActive && !winnerDeclared && gameID && userID) {
+        forfeitGameOnClose();
     }
 }
 
@@ -1180,6 +1209,8 @@ function windowResized() {
 }
 
 // ==================== EXPORTS ====================
+window.addEventListener('beforeunload', handleBeforeUnload);
+window.addEventListener('pagehide', handleBeforeUnload);
 window.preload = preload;
 window.setup = setup;
 window.draw = draw;

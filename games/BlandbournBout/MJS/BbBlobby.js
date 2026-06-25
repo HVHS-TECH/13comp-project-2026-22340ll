@@ -20,6 +20,7 @@ let gameActionButton, usernameInput;
 // Declare other variables
 let statusMessage, isAuthenticated, isAdmin;
 let currentPlayer, opponentPlayer, currentgameName = '', opponentgameName = '';
+let currentUsername = '';
 let currentGameData = null, gameInterval, lobbyListener;
 let userTotalWins = 0;
 let userHighestDamage = 0;
@@ -205,9 +206,7 @@ function updateUIForAuth(loggedIn) {
         }
 
         // Set username if available
-        if (auth.currentUser) {
-            usernameInput.value(auth.currentUser.displayName || '');
-        }
+        usernameInput.value(currentUsername || auth.currentUser?.displayName || '');
     } else {
         loginButton.show();
         getoutButton.hide();
@@ -344,14 +343,17 @@ async function loadUserStats() { // It's in the name. Load UID stats
             userTotalWins = userData.wins || 0;
             userTotalDamage = userData.totalDamage || 0;
             userHighestDamage = userData.highestTotalDamage || 0;
+            currentUsername = userData.username || auth.currentUser?.displayName || '';
         } else {
             userTotalWins = 0;
             userTotalDamage = 0;
             userHighestDamage = 0;
+            currentUsername = auth.currentUser?.displayName || '';
             await update(userRef, {
                 wins: 0,
                 totalDamage: 0,
-                highestTotalDamage: 0
+                highestTotalDamage: 0,
+                username: currentUsername
             });
         }
     } catch (error) {
@@ -359,6 +361,7 @@ async function loadUserStats() { // It's in the name. Load UID stats
         userTotalWins = 0;
         userTotalDamage = 0;
         userHighestDamage = 0;
+        currentUsername = auth.currentUser?.displayName || '';
     }
 }
 
@@ -403,8 +406,8 @@ async function createNewGame() { // Create a new game and set up initial state i
     // Store player info in separate node or in users
     await set(ref(database, `users/${userID}/currentGame`), gameID);
     await set(ref(database, `users/${userID}/currentClass`), randomClass);
-
-    // Store game state in sessionStorage for waiting page
+        await set(ref(database, `users/${userID}/username`), username);
+        currentUsername = username;
     sessionStorage.setItem('gameID', gameID);
     sessionStorage.setItem('playerClass', randomClass);
     sessionStorage.setItem('isHost', 'true');
@@ -493,6 +496,7 @@ async function joinGame() {
         await set(ref(database, `users/${userID}/currentGame`), gameCode);
         await set(ref(database, `users/${userID}/currentClass`), randomClass);
         await set(ref(database, `users/${userID}/username`), username);
+        currentUsername = username;
 
         // Store in sessionStorage for waiting page
         sessionStorage.setItem('gameID', gameCode);
@@ -759,17 +763,18 @@ function drawLobby() {
         drawAvailableGames();
     }
 
-    // Draw userID info
+    // Draw user info
     fill(0);
     textSize(14);
     textAlign(LEFT);
-    text(`Logged in as: ${auth.currentUser?.displayName || 'User'}`, 20, height - 40);
+    const loggedInName = currentUsername || usernameInput?.value() || auth.currentUser?.displayName || 'User';
+    text(`Logged in as: ${loggedInName}`, 20, height - 40);
     if (isAdmin) {
         text('(Admin)', 20, height - 20);
     }
 }
 
-// FIXED: drawAvailableGames with proper click area storage
+// drawAvailableGames with proper click area storage
 function drawAvailableGames() {
     fill(15);
     textSize(20);
@@ -1005,13 +1010,17 @@ function drawPlayerBox(x, y, player, className, ready) {
     }
 }
 
-// Clean up Firebase listeners when leaving the page
+// Clean up Firebase listeners and cancel waiting games when leaving the page
 function windowWillUnload() {
     if (lobbyListener) {
         lobbyListener(); // Clean up lobby listener
     }
     if (gameInterval) {
         gameInterval(); // Clean up game listener
+    }
+
+    if (gameID) {
+        cancelGame().catch(() => {});
     }
 }
 
@@ -1047,3 +1056,5 @@ window.mouseClicked = mouseClicked;
 
 // Add event listener for cleanup on page unload
 window.addEventListener('beforeunload', windowWillUnload);
+window.addEventListener('pagehide', windowWillUnload);
+window.addEventListener('pagehide', windowWillUnload);
