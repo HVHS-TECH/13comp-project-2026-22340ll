@@ -343,7 +343,7 @@ async function loadUserStats() { // It's in the name. Load UID stats
             userTotalWins = userData.wins || 0;
             userTotalDamage = userData.totalDamage || 0;
             userHighestDamage = userData.highestTotalDamage || 0;
-            currentUsername = userData.username || auth.currentUser?.displayName || '';
+            currentUsername = userData.gameName || auth.currentUser?.displayName || '';
         } else {
             userTotalWins = 0;
             userTotalDamage = 0;
@@ -353,7 +353,7 @@ async function loadUserStats() { // It's in the name. Load UID stats
                 wins: 0,
                 totalDamage: 0,
                 highestTotalDamage: 0,
-                username: currentUsername
+                gameName: currentUsername
             });
         }
     } catch (error) {
@@ -406,7 +406,7 @@ async function createNewGame() { // Create a new game and set up initial state i
     // Store player info in separate node or in users
     await set(ref(database, `users/${userID}/currentGame`), gameID);
     await set(ref(database, `users/${userID}/currentClass`), randomClass);
-        await set(ref(database, `users/${userID}/username`), username);
+        await set(ref(database, `users/${userID}/gameName`), username);
         currentUsername = username;
     sessionStorage.setItem('gameID', gameID);
     sessionStorage.setItem('playerClass', randomClass);
@@ -495,7 +495,7 @@ async function joinGame() {
         // Store player info
         await set(ref(database, `users/${userID}/currentGame`), gameCode);
         await set(ref(database, `users/${userID}/currentClass`), randomClass);
-        await set(ref(database, `users/${userID}/username`), username);
+        await set(ref(database, `users/${userID}/gameName`), username);
         currentUsername = username;
 
         // Store in sessionStorage for waiting page
@@ -895,7 +895,7 @@ async function drawLeaderboard() {
     textStyle(NORMAL);
     textSize(14);
     fill(40);
-    text(`User`, width / 2.75, boardY + 32);
+    text(`User`, width / 2.65, boardY + 32);
     text(`Wins`, width / 2.05, boardY + 32);
     text(`Total Damage`, width / 1.75, boardY + 32);
 
@@ -911,7 +911,7 @@ async function drawLeaderboard() {
                 leaderboardData = Object.entries(usersData)
                     .map(([uid, data]) => ({
                         uid,
-                        username: data.username || 'Anonymous',
+                        username: data.gameName || 'Anonymous',
                         wins: data.wins || 0,
                         totalDamage: data.totalDamage || 0
                     }))
