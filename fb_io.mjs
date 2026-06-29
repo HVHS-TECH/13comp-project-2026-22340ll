@@ -19,7 +19,8 @@ import {
     orderByChild,
     limitToLast,
     remove,
-    update
+    update,
+    onDisconnect
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
 
 const firebaseConfig = {
@@ -452,5 +453,7 @@ export {
     get,
     onValue,
     off,
-    update
+    update,
+    onDisconnect,
+    remove
 };

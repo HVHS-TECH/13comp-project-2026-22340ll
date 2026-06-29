@@ -9,7 +9,7 @@ import {
     fb_onAuthStateChanged, fb_authChanged,
     fb_signOut, fb_checkAdminStatus,
     auth, database, ref, set, get,
-    onValue, update
+    onValue, update, onDisconnect, remove
 } from "../../../fb_io.mjs";
 
 // ==================== GLOBAL STATE ====================
@@ -30,6 +30,7 @@ let winnerDeclared = false;
 let lastMove = null;
 let lastMoveBy = null;
 let gameListener = null;
+let gameDisconnect = null;
 let actionInProgress = false;
 let battleLog = [];
 
@@ -134,6 +135,7 @@ let opponentUID = null;
 // Store user's wins
 let userTotalWins = 0;
 let endGameTimeout = null;
+let deleteGameTimeout = null;
 const LOBBY_PAGE = 'BbBlobby.html';
 
 // ====================SETUP ====================
@@ -212,6 +214,7 @@ async function setupGame() {
 
     await loadUserWins();
     await loadGameData();
+    await setupDisconnectDelete();
     startGameListener();
 }
 
@@ -775,6 +778,52 @@ function scheduleEndGameReturn() {
     if (endGameTimeout) return;
     statusMessage = 'Game over. Returning to lobby...';
     redirectToLobby(4000);
+    scheduleGameDeletion();
+}
+
+async function cancelDisconnectDelete() {
+    if (!gameDisconnect) return;
+    try {
+        await gameDisconnect.cancel();
+    } catch (error) {
+        console.warn('Failed to cancel onDisconnect action:', error);
+    } finally {
+        gameDisconnect = null;
+    }
+}
+
+async function setupDisconnectDelete() {
+    if (!gameID || !userID || !gameActive || winnerDeclared) return;
+    const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
+    try {
+        if (gameDisconnect) {
+            await gameDisconnect.cancel();
+        }
+        gameDisconnect = onDisconnect(gameRef);
+        await gameDisconnect.remove();
+    } catch (error) {
+        console.warn('Could not set onDisconnect remove for game:', error);
+        gameDisconnect = null;
+    }
+}
+
+async function deleteActiveGameFromFirebase(reason = 'game end') {
+    if (!gameID) return;
+    const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
+    try {
+        await remove(gameRef);
+        console.log(`Deleted active game ${gameID} after ${reason}`);
+    } catch (error) {
+        console.warn('Failed to delete active game from Firebase:', error);
+    }
+}
+
+function scheduleGameDeletion() {
+    if (deleteGameTimeout) return;
+    deleteGameTimeout = setTimeout(() => {
+        deleteActiveGameFromFirebase('game over');
+        deleteGameTimeout = null;
+    }, 5000);
 }
 
 // ==================== DRAW FUNCTIONS ====================
@@ -1156,16 +1205,9 @@ async function forfeitGame() {
     }
 
     try {
-        const winnerName = opponentName || "Opponent";
         const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
-        await update(gameRef, {
-            winner: winnerName,
-            gameActive: false,
-            lastActionText: `${playerName} forfeited. ${winnerName} wins!`,
-            lastMove: 'forfeit',
-            lastMoveBy: userID
-        });
-        addToBattleLog(`${playerName} forfeited. ${winnerName} wins!`, "system");
+        await remove(gameRef);
+        addToBattleLog(`${playerName} forfeited. ${opponentName || 'Opponent'} wins!`, "system");
         gameActive = false;
         winnerDeclared = true;
         statusMessage = "You forfeited. Returning to lobby...";
@@ -1173,24 +1215,21 @@ async function forfeitGame() {
     } catch (error) {
         console.error('Error forfeiting game:', error); 
         statusMessage = "Error processing forfeit. HOW?!";
+    } finally {
+        await cancelDisconnectDelete();
     }
 }
 
 async function forfeitGameOnClose() {
     if (!gameID || !userID || !gameActive || winnerDeclared) return;
-    const winnerName = opponentName || "Opponent";
     const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
 
     try {
-        await update(gameRef, {
-            winner: winnerName,
-            gameActive: false,
-            lastActionText: `${playerName} forfeited. ${winnerName} wins!`,
-            lastMove: 'forfeit',
-            lastMoveBy: userID
-        });
+        await remove(gameRef);
     } catch (error) {
-        console.error('Error updating game on close:', error);
+        console.error('Error deleting game on close:', error);
+    } finally {
+        await cancelDisconnectDelete();
     }
 }
 
