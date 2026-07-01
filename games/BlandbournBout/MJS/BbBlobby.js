@@ -64,6 +64,7 @@ function preload() { //Preload everyting for further purposes.
     imgPaladin = loadImage('../other/BbBPal.png');
     imgBarbarian = loadImage('../other/BbBBarb.png');
     imgCleric = loadImage('../other/BbBCler.png');
+    imgWizard = loadImage('../other/BbBWiz.png');
 
     classImages = { // Map classes to images
         'Spartan': imgSpartan,

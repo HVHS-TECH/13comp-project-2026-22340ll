@@ -754,6 +754,45 @@ async function saveWinToFirebase() {
     }
 }
 
+async function saveOpponentWin(opponentId, damageDealt) { // Save win to Firebase if the opponent wins
+    if (!opponentId) return;
+
+    try {
+        const userRef = ref(database, `users/${opponentId}`);
+        const snapshot = await get(userRef);
+
+        let currentWins = 0;
+        let currentDamage = 0;
+        let previousBest = 0;
+        let opponentName = "Opponent";
+
+        if (snapshot.exists()) {
+            const userData = snapshot.val();
+            currentWins = userData.wins || 0;
+            currentDamage = userData.totalDamage || 0;
+            previousBest = userData.highestTotalDamage || 0;
+            opponentName = userData.gameName || userData.displayName || "Opponent";
+        }
+
+        const newWins = currentWins + 1;
+        const newDamage = currentDamage + damageDealt;
+        const bestDamage = Math.max(previousBest, damageDealt);
+
+        await update(userRef, {
+            wins: newWins,
+            totalDamage: newDamage,
+            highestTotalDamage: bestDamage,
+            lastWinDate: new Date().toISOString()
+        });
+
+        console.log(`Win saved for ${opponentName}! Now has ${newWins} wins`);
+        addToBattleLog(`${opponentName} now has ${newWins} total wins!`, "system");
+
+    } catch (error) {
+        console.error('Error saving opponent win:', error);
+    }
+}
+
 function cleanupEndGameSession() {
     try {
         sessionStorage.removeItem('gameID');
@@ -1206,11 +1245,50 @@ async function forfeitGame() {
 
     try {
         const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
-        await remove(gameRef);
-        addToBattleLog(`${playerName} forfeited. ${opponentName || 'Opponent'} wins!`, "system");
+        
+        // Get current game data to know opponent's name
+        const snapshot = await get(gameRef);
+        if (!snapshot.exists()) {
+            statusMessage = "Game no longer exists.";
+            return;
+        }
+        
+        const gameData = snapshot.val();
+        
+        // Determine opponent's name
+        let opponentName = "Opponent";
+        if (isPlayer1) {
+            opponentName = gameData.player2Name || opponentName;
+        } else {
+            opponentName = gameData.player1Name || opponentName;
+        }
+        
+        // Update the game to declare opponent as winner
+        const updateData = {
+            gameActive: false,
+            winner: opponentName,
+            lastActionText: `${playerName} forfeited! ${opponentName} wins!`
+        };
+        
+        // If opponent has no damage, give them credit
+        if (isPlayer1) {
+            updateData.uid2DMG = (gameData.uid2DMG || 0) + 10; // Small bonus for forfeit
+        } else {
+            updateData.uid1DMG = (gameData.uid1DMG || 0) + 10;
+        }
+        
+        await update(gameRef, updateData);
+        
+        addToBattleLog(`${playerName} forfeited. ${opponentName} wins!`, "system");
         gameActive = false;
         winnerDeclared = true;
-        statusMessage = "You forfeited. Returning to lobby...";
+        statusMessage = `You forfeited. ${opponentName} wins! Returning to lobby...`;
+        
+        // Save win for the opponent
+        if (opponentUID) {
+            await saveOpponentWin(opponentUID, isPlayer1 ? gameData.uid2DMG || 0 : gameData.uid1DMG || 0);
+        }
+        
         scheduleEndGameReturn();
     } catch (error) {
         console.error('Error forfeiting game:', error); 
@@ -1222,12 +1300,46 @@ async function forfeitGame() {
 
 async function forfeitGameOnClose() {
     if (!gameID || !userID || !gameActive || winnerDeclared) return;
-    const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
-
+    
     try {
-        await remove(gameRef);
+        const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
+        
+        // Get current game data
+        const snapshot = await get(gameRef);
+        if (!snapshot.exists()) return;
+        
+        const gameData = snapshot.val();
+        
+        // Determine opponent's name
+        let opponentName = "Opponent";
+        if (isPlayer1) {
+            opponentName = gameData.player2Name || opponentName;
+        } else {
+            opponentName = gameData.player1Name || opponentName;
+        }
+        
+        // Declare opponent as winner
+        const updateData = {
+            gameActive: false,
+            winner: opponentName,
+            lastActionText: `${playerName} disconnected. ${opponentName} wins!`
+        };
+        
+        await update(gameRef, updateData);
+        
+        // Save win for opponent
+        if (opponentUID) {
+            await saveOpponentWin(opponentUID, isPlayer1 ? gameData.uid2DMG || 0 : gameData.uid1DMG || 0);
+        }
+        
+        gameActive = false;
+        winnerDeclared = true;
+        
     } catch (error) {
-        console.error('Error deleting game on close:', error);
+        console.error('Error handling forfeit on close:', error);
+        // If update fails, just delete the game
+        const gameRef = ref(database, `gameScore/BbB/gameOn/${gameID}`);
+        await remove(gameRef);
     } finally {
         await cancelDisconnectDelete();
     }
@@ -1239,10 +1351,10 @@ function handleBeforeUnload() {
         gameListener = null;
     }
     if (gameActive && !winnerDeclared && gameID && userID) {
+        // Instead of just deleting, mark the opponent as winner
         forfeitGameOnClose();
     }
 }
-
 function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
 }
