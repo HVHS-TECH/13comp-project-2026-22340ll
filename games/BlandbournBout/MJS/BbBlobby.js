@@ -2,8 +2,6 @@
   -BbBlobby.js 
   -Blandbourn Bout lobby
   -Waiting room for players to join before starting the game.
-  -FIXED: Join buttons work properly with mouseClicked()
-  -Same visual appearance as original
 /*************************************************************/
 
 // -Setup
